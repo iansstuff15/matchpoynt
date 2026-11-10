@@ -1,0 +1,52 @@
+name: Web and API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+      # Fails if server/drizzle migrations are inconsistent with each other.
+      - run: pnpm --filter @matchpoynt/server db:check
+      # Fails if schema.ts changed without a generated migration.
+      - run: pnpm db:generate && git diff --exit-code server/drizzle
+      - run: pnpm build
+      - run: pnpm --filter @matchpoynt/server build
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @matchpoynt/test exec playwright install --with-deps chromium
+      - run: pnpm test:ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-test-output
+          path: test/.output/
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.local.yml build

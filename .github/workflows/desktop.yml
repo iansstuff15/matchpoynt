@@ -1,0 +1,66 @@
+name: Desktop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LINUX_DEPS: libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+jobs:
+  rust:
+    name: Rust fmt, clippy, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # generate_context! needs the built frontend.
+      - run: pnpm install --frozen-lockfile && pnpm build
+      - run: cargo fmt --check
+        working-directory: src-tauri
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: rust
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: startsWith(matrix.platform, 'ubuntu')
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Unsigned for now. Code signing and updater keys come from CI secrets
+      # once releases are set up (TAURI_SIGNING_PRIVATE_KEY, APPLE_*, WINDOWS_*).
+      - run: pnpm tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matchpoynt-${{ matrix.platform }}
+          path: src-tauri/target/release/bundle/
