@@ -1,15 +1,11 @@
 import { serve } from '@hono/node-server'
 import { createApp } from '@/app'
 import { env } from '@/config/env'
-import { features } from '@/config/features'
+import { checkStartup } from '@/config/startup'
 
-const { API_PORT, GIPHY_API_KEY } = env()
-// Fail at startup, not on first request, if a FEATURE_* value is malformed.
-const { web } = features()
-if (web.gifSearch && !GIPHY_API_KEY) {
-  throw new Error('FEATURE_WEB_GIF_SEARCH is on but GIPHY_API_KEY is missing. Add the key (developers.giphy.com) or turn GIF search off. See .env.example.')
-}
-const server = serve({ fetch: createApp().fetch, port: API_PORT, hostname: '0.0.0.0' }, ({ port }) => {
+// The API as a long-running Node server (Docker, `pnpm dev`). On Vercel, src/vercel.ts is the entrypoint instead.
+checkStartup()
+const server = serve({ fetch: createApp().fetch, port: env().API_PORT, hostname: '0.0.0.0' }, ({ port }) => {
   console.log(`Matchpoynt API listening on :${port}`)
 })
 

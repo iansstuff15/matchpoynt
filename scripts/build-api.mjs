@@ -1,5 +1,6 @@
-// Bundles the API, including @matchpoynt/shared and every dependency, into one
-// file (server/dist/index.js) so the runtime image needs no node_modules.
+// Bundles the API, including @matchpoynt/shared and every dependency, into
+// single files so nothing at runtime needs node_modules: server/dist/index.js
+// (the Node server, for Docker) and server/dist/vercel.js (the Vercel Function).
 // `@/` paths come from server/tsconfig.json. Run with `pnpm --filter @matchpoynt/server build`.
 import { copyFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -12,8 +13,8 @@ const { build } = createRequire(path.join(serverDir, 'package.json'))('esbuild')
 await build({
   absWorkingDir: serverDir,
   tsconfig: path.join(serverDir, 'tsconfig.json'),
-  entryPoints: ['src/index.ts'],
-  outfile: 'dist/index.js',
+  entryPoints: { index: 'src/index.ts', vercel: 'src/vercel.ts' },
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   target: 'node24',
