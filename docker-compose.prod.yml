@@ -1,0 +1,67 @@
+# Production: runs prebuilt images. Runtime values come from .env on the host.
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+name: matchpoynt
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+  tmpfs:
+    - /tmp:uid=10001,gid=10001,mode=0700
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  web:
+    <<: *hardened
+    image: ${MATCHPOYNT_WEB_IMAGE:-matchpoynt-web:latest}
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    volumes:
+      - ${MATCHPOYNT_LOG_DIR:-./logs}/web:/var/log/matchpoynt
+    networks: [matchpoynt]
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+
+  api:
+    <<: *hardened
+    image: ${MATCHPOYNT_API_IMAGE:-matchpoynt-api:latest}
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    # Runtime config and secrets come from the host's .env, never the image.
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    networks: [matchpoynt]
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M }
+
+  proxy:
+    <<: *hardened
+    image: ${MATCHPOYNT_PROXY_IMAGE:-matchpoynt-proxy:latest}
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    ports:
+      - "${PROXY_PORT:-80}:8080"
+    volumes:
+      - ${MATCHPOYNT_LOG_DIR:-./logs}/proxy:/var/log/matchpoynt
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks: [matchpoynt]
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+
+networks:
+  matchpoynt:
+    driver: bridge

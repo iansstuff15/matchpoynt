@@ -1,0 +1,31 @@
+# Only what the web build needs goes into the build context.
+.git
+.gitignore
+.dockerignore
+node_modules
+dist
+logs
+*.log
+
+# Desktop app is built in CI, not Docker; UI tests run in CI, not in images (unit tests run in the API build)
+src-tauri/
+test/e2e/
+test/.output/
+
+# Build output and migration tooling
+**/node_modules
+**/dist
+server/drizzle/
+
+# Secrets are injected at runtime, never baked in
+.env
+.env.*
+
+# Docker and docs
+docker-compose*.yml
+docker/**/Dockerfile
+*.md
+.github
+.vscode
+.idea
+.DS_Store

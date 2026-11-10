@@ -1,0 +1,55 @@
+# Local: builds both images from source. Run with
+#   docker compose -f docker-compose.local.yml up --build
+name: matchpoynt-local
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  # nginx pid and temp files; nothing is written to the image filesystem.
+  tmpfs:
+    - /tmp:uid=10001,gid=10001,mode=0700
+
+services:
+  web:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: matchpoynt-web:local
+    volumes:
+      - ./logs/web:/var/log/matchpoynt
+    networks: [matchpoynt]
+
+  api:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: matchpoynt-api:local
+    # Runtime config and secrets come from the host's .env, never the image.
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    networks: [matchpoynt]
+
+  proxy:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    image: matchpoynt-proxy:local
+    ports:
+      - "${PROXY_PORT:-8080}:8080"
+    volumes:
+      - ./logs/proxy:/var/log/matchpoynt
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks: [matchpoynt]
+
+networks:
+  matchpoynt:
+    driver: bridge
