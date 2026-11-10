@@ -1,0 +1,596 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './animations/animations.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Token values come from config/theme.ts via virtual:matchpoynt-theme.css
+   (imported in main.tsx). This file only maps them into Tailwind. */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-court: var(--court);
+  --color-court-foreground: var(--court-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-deep: var(--deep);
+  --color-deep-strong: var(--deep-strong);
+  --color-deep-foreground: var(--deep-foreground);
+  --color-deep-muted: var(--deep-muted);
+  --color-mesh-1: var(--mesh-1);
+  --color-mesh-2: var(--mesh-2);
+  --color-mesh-3: var(--mesh-3);
+  --color-mesh-4: var(--mesh-4);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-gold: var(--gold);
+  --color-silver: var(--silver);
+  --color-bronze: var(--bronze);
+  --color-medal-foreground: var(--medal-foreground);
+  --color-fire: var(--fire);
+  --color-ember: var(--ember);
+  --color-scrim: var(--scrim);
+  --color-scrim-foreground: var(--scrim-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--gp-font-sans);
+  --font-display: var(--gp-font-display);
+  --font-weight-normal: var(--gp-font-weight-regular);
+  --font-weight-medium: var(--gp-font-weight-medium);
+  --font-weight-semibold: var(--gp-font-weight-semibold);
+  --font-weight-bold: var(--gp-font-weight-bold);
+  --text-display-xl: var(--gp-text-display-xl);
+  --text-display-xl--line-height: var(--gp-text-display-xl-lh);
+  --text-hero: var(--gp-text-hero);
+  --text-hero--line-height: var(--gp-text-hero-lh);
+  --text-display: var(--gp-text-display);
+  --text-display--line-height: var(--gp-text-display-lh);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight text-balance;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+  .section {
+    @apply py-16 sm:py-24;
+  }
+  .section-eyebrow {
+    @apply text-sm font-semibold tracking-wide text-primary uppercase;
+  }
+  .section-title {
+    @apply mt-2 text-display font-bold;
+  }
+  .section-lead {
+    @apply mt-4 max-w-2xl text-lg text-muted-foreground;
+  }
+  /* Landing page (by-ian layout): framed hero, heavy tight headlines, mono eyebrows, glass panels. */
+  .headline-xl {
+    @apply font-display text-display-xl font-bold tracking-[-0.045em] text-balance;
+  }
+  .headline-lg {
+    @apply font-display text-display font-bold tracking-[-0.035em] text-balance;
+  }
+  .eyebrow-mono {
+    @apply font-mono text-xs tracking-wide opacity-80;
+  }
+  .glass-panel {
+    @apply rounded-3xl border border-glass-border bg-glass shadow-[0_8px_32px_-8px_rgb(0_0_0/0.35)] backdrop-blur-xl;
+  }
+  .frame-hero {
+    @apply relative m-2 overflow-hidden rounded-[2rem] bg-deep text-deep-foreground sm:m-4;
+    background-image:
+      radial-gradient(45% 55% at 18% 22%, color-mix(in oklch, var(--mesh-1) 85%, transparent), transparent 70%),
+      radial-gradient(35% 45% at 82% 18%, color-mix(in oklch, var(--mesh-2) 55%, transparent), transparent 70%),
+      radial-gradient(40% 50% at 70% 78%, color-mix(in oklch, var(--mesh-4) 45%, transparent), transparent 70%),
+      radial-gradient(50% 60% at 25% 90%, color-mix(in oklch, var(--mesh-3) 70%, transparent), transparent 70%);
+  }
+  .section-deep {
+    @apply bg-deep text-deep-foreground;
+  }
+  .footer-dusk {
+    @apply text-deep-foreground;
+    background-image: linear-gradient(180deg, var(--deep) 0%, var(--deep-strong) 55%, color-mix(in oklch, var(--deep-strong) 70%, black) 100%);
+  }
+  /* Splash (components/splash/Splash.tsx): wordmark over the page, then a curtain matching the hero frame. */
+  /* Centred by layout, not translate: GSAP owns the transform of what it animates. */
+  .splash-root {
+    @apply fixed inset-0 z-[100] grid cursor-pointer place-items-center bg-background;
+  }
+  .splash-stack {
+    @apply relative flex flex-col items-center gap-[clamp(1rem,2.5vw,2rem)] px-4;
+  }
+  /* Used with .frame-hero, which gives it the hero's colours and frame. */
+  .splash-curtain {
+    @apply absolute inset-0;
+    /* Hidden until the wipe starts; the timeline takes over the clip once fonts are ready. */
+    clip-path: inset(0 0 100% 0);
+  }
+  .splash-word {
+    @apply m-0 font-display leading-[0.9] font-bold whitespace-nowrap;
+    font-size: clamp(4rem, 17vw, 20rem);
+    letter-spacing: -0.05em;
+    background: linear-gradient(120deg, var(--mesh-1), var(--deep) 55%, var(--mesh-4));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    clip-path: inset(100% 0 0 0);
+  }
+  .splash-tagline {
+    @apply text-center font-mono text-xs tracking-wide text-muted-foreground opacity-0 sm:text-sm;
+  }
+  /* Leaderboard re-order (animations/leaderboardMotion.ts): who's climbing passes in front; who's dropping dims. */
+  .rank-rising {
+    @apply relative z-10 bg-success/10 outline-2 -outline-offset-2 outline-success/50;
+  }
+  .rank-falling {
+    @apply opacity-60;
+  }
+  /* Session page: never taller than the screen. On wide screens the main column scrolls on its own
+     and the queue is a full-height panel on the right with a small margin; below lg they stack and
+     AppLayout's <main> scrolls. */
+  .session-page {
+    @apply shrink-0 lg:min-h-0 lg:flex-1;
+  }
+  .session-page-split {
+    @apply lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:overflow-hidden;
+  }
+  .session-main {
+    @apply space-y-6 p-6 lg:min-h-0 lg:overflow-y-auto;
+  }
+  .session-queue-panel {
+    @apply px-6 pb-6 lg:min-h-0 lg:p-2 lg:pl-0;
+  }
+  /* The queue card: header fixed, only the player list scrolls (QueueList + skeleton).
+     Below lg the logo header (md) and page padding take part of the screen. */
+  /* Above the courts (BoardTools): a bordered section with its title bar, collapsing to just that bar. */
+  .board-tools {
+    @apply grid gap-3 rounded-xl border bg-card px-4 py-3;
+  }
+  /* Add a player and Add court on one row, wrapping on narrow screens. */
+  .board-tools-content {
+    @apply flex flex-wrap items-end gap-3 pt-1;
+  }
+  /* The compact add-player form grows into the row; its name field takes what's left. */
+  .add-player-compact {
+    @apply min-w-0 flex-1 gap-2;
+  }
+  .add-player-compact .add-player-name {
+    @apply min-w-36 flex-1;
+  }
+  /* The queue panel's tournament section: who's competing, as checkboxes, with "Update tournament". */
+  .tournament-competitors {
+    @apply mb-3 grid gap-2 rounded-lg border bg-muted/40 p-3;
+  }
+  /* A queued player's wait for their next game (WaitTime); long waits in the warning colour. */
+  .wait-time {
+    @apply inline-flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground tabular-nums [&>svg]:size-3;
+  }
+  .wait-time-long {
+    @apply font-medium text-warning-foreground;
+  }
+  .board-queue {
+    @apply flex max-h-[calc(100svh-5.5rem)] flex-col md:max-h-[calc(100svh-2rem)] lg:h-full lg:max-h-none;
+  }
+  .board-queue-body {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+  .board-queue-scroll {
+    @apply flex min-h-0 flex-1 flex-col *:data-[slot=scroll-area-viewport]:min-h-0 *:data-[slot=scroll-area-viewport]:flex-1;
+  }
+  /* Leaderboard: the tag on a player on a hot streak (HotStreakTag). */
+  .hot-streak-tag {
+    @apply relative inline-flex shrink-0 items-center gap-1 rounded-full bg-fire/12 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-fire;
+  }
+  .hot-streak-flame {
+    @apply size-3.5 origin-bottom animate-flame;
+  }
+  .hot-streak-ember {
+    @apply pointer-events-none absolute bottom-2 left-2.5 size-1 animate-ember rounded-full bg-ember opacity-0;
+  }
+  /* A court card: the two sides as panels with "vs" between (no drawn court). Every part has a
+     fixed height (player rows, the time-limit row, the reason line), so a court's card keeps one
+     height whether it's open or playing, empty or full. */
+  .court-card {
+    @apply h-full;
+  }
+  .court-matchup {
+    @apply grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2;
+  }
+  .court-side {
+    @apply grid min-h-24 grid-cols-[minmax(0,1fr)] content-start gap-1.5 rounded-lg border bg-muted/40 p-2;
+  }
+  .court-side-label {
+    @apply text-xs font-semibold tracking-wide text-muted-foreground uppercase;
+  }
+  .court-vs {
+    @apply self-center font-display text-xs font-semibold text-muted-foreground uppercase;
+  }
+  /* One player place on a side: a placed player's chip (names and empty slots below match its h-7). */
+  .court-row {
+    @apply h-7 shrink-0;
+  }
+  .court-player {
+    @apply h-7 shrink-0 truncate rounded-md bg-background px-2 py-1 text-sm leading-5 font-medium shadow-xs;
+  }
+  /* The card's middle: takes the spare height, with the matchup centred in it. */
+  .court-body {
+    @apply grid flex-1 content-center;
+  }
+  /* The footer's second row, one fixed height on every card: a playing court's time-limit
+     countdown above "Finish match", or the reason an open court can't start below its button. */
+  .court-footer-slot {
+    @apply h-8;
+  }
+  .court-timer {
+    @apply flex flex-col justify-end;
+  }
+  .court-reason {
+    @apply line-clamp-2 text-xs text-muted-foreground;
+  }
+  /* Lists of player names that cut a long name short with "…" (court sides, lined-up matches). */
+  .player-name-list {
+    @apply grid min-w-0 grid-cols-[minmax(0,1fr)] content-start;
+  }
+  /* Queue panel: a lined-up match (automatic queueing), and section titles inside the list. */
+  .queue-group {
+    @apply grid grid-cols-[minmax(0,1fr)] gap-1.5 rounded-lg border bg-muted/40 p-2;
+  }
+  .queue-group:first-child {
+    @apply border-primary/40 bg-primary/5;
+  }
+  .queue-group-label {
+    @apply text-xs font-semibold tracking-wide text-muted-foreground uppercase;
+  }
+  .queue-group-sides {
+    @apply grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2;
+  }
+  /* A player row in the queue panel: name and buttons on one line, the skill tier on the line below. */
+  .queue-player-row {
+    @apply grid grid-cols-[minmax(0,1fr)] gap-1 py-2 *:data-[slot=badge]:justify-self-start;
+  }
+  .queue-section-title {
+    @apply pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase;
+  }
+  .court-slot {
+    @apply flex h-7 shrink-0 items-center rounded-md border border-dashed px-2 text-xs text-muted-foreground;
+  }
+  /* A card with a photo behind it (club and session covers): the photo fills the card, a scrim
+     from the bottom keeps the text readable on any photo. Without a photo it's a plain muted card. */
+  .cover-card {
+    @apply relative isolate overflow-hidden bg-muted bg-cover bg-center;
+  }
+  .cover-card-scrim {
+    @apply pointer-events-none absolute inset-0 -z-10 bg-linear-to-t from-scrim via-scrim/60 to-scrim/10;
+  }
+  .cover-card[data-cover] {
+    @apply text-scrim-foreground;
+  }
+  .cover-card[data-cover] [data-slot='card-description'] {
+    @apply text-scrim-foreground/80;
+  }
+  /* The club manager's banner: the club cover, with the profile photo overlapping its bottom edge. */
+  .club-hero-cover {
+    @apply relative aspect-[3/1] max-h-64 w-full overflow-hidden rounded-2xl bg-muted sm:aspect-[4/1];
+  }
+  .club-hero-avatar {
+    @apply -mt-10 size-20 shrink-0 rounded-full border-4 border-background bg-muted shadow-sm sm:-mt-12 sm:size-24;
+  }
+  /* Photo picker preview: the cover keeps the banner's shape, the profile photo is square. */
+  .image-preview-cover {
+    @apply relative aspect-[3/1] w-full overflow-hidden rounded-xl border bg-muted sm:aspect-[4/1];
+  }
+  .image-preview-avatar {
+    @apply relative size-24 overflow-hidden rounded-full border bg-muted;
+  }
+  /* Tournament bracket: rounds as columns. Matches spread evenly, so each sits level with the
+     two it comes from; lines join a pair to the match it feeds (data-join="pairs") or run
+     straight on when the next round has as many matches (losers-bracket drop-in rounds). */
+  .bracket {
+    @apply flex gap-6 overflow-x-auto pb-4;
+  }
+  .bracket-round {
+    @apply flex w-60 shrink-0 flex-col;
+  }
+  .bracket-round-title {
+    @apply mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase;
+  }
+  .bracket-round-matches {
+    @apply flex flex-1 flex-col justify-around gap-4;
+  }
+  .bracket-pair {
+    @apply relative flex flex-1 flex-col justify-around gap-4;
+  }
+  .bracket-round[data-join='pairs'] .bracket-pair:has(> :nth-child(2)) {
+    @apply after:absolute after:top-1/4 after:-right-3 after:bottom-1/4 after:border-r after:content-[''];
+    @apply before:absolute before:top-1/2 before:-right-6 before:w-3 before:border-t before:content-[''];
+  }
+  .bracket-round[data-join='pairs'] .bracket-match {
+    @apply after:absolute after:top-1/2 after:-right-3 after:w-3 after:border-t after:content-[''];
+  }
+  .bracket-round[data-join='straight'] .bracket-match {
+    @apply after:absolute after:top-1/2 after:-right-6 after:w-6 after:border-t after:content-[''];
+  }
+  .bracket-match {
+    @apply relative grid rounded-lg border bg-card text-sm shadow-xs;
+  }
+  .bracket-match[data-status='playing'] {
+    @apply border-primary ring-1 ring-primary;
+  }
+  .bracket-match[data-status='void'] {
+    @apply opacity-50;
+  }
+  .bracket-match-head {
+    @apply flex items-center justify-between gap-2 border-b px-3 py-1 text-xs text-muted-foreground;
+  }
+  .bracket-side {
+    @apply flex min-h-8 items-center justify-between gap-2 px-3 py-1.5;
+  }
+  .bracket-side + .bracket-side {
+    @apply border-t;
+  }
+  .bracket-side[data-winner] {
+    @apply font-semibold;
+  }
+  .bracket-side[data-loser] {
+    @apply text-muted-foreground;
+  }
+  .bracket-side[data-placeholder] {
+    @apply text-muted-foreground italic;
+  }
+  .bracket-score {
+    @apply flex shrink-0 gap-1.5 font-mono text-xs tabular-nums;
+  }
+  /* A pool's (or round robin's) matches, as a grid of cards under its table. */
+  .pool-matches {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  /* The player-name field with club member suggestions (shadcn Command): its input looks like
+     every other input. */
+  .member-name-field {
+    @apply overflow-visible bg-transparent;
+  }
+  .member-name-field [data-slot='command-input-wrapper'] {
+    @apply h-9 rounded-md border border-b border-input px-3 shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30;
+  }
+  .member-name-field [data-slot='command-input'] {
+    @apply h-8 py-1;
+  }
+  /* An ordinary page inside the app shell (Clubs, a club's manager page): centred, padded, scrolls with <main>. */
+  .app-page {
+    @apply mx-auto w-full max-w-6xl space-y-6 p-6;
+  }
+  /* The club picker (/clubs), in the style of a streaming service's "who's watching" screen:
+     big round avatars on a dark stage, names under them, a ring and a lift on hover or focus.
+     Edit mode lays a pencil over each one. */
+  .club-picker {
+    @apply flex flex-1 flex-col items-center justify-center gap-10 bg-deep-strong px-6 py-14 text-deep-foreground;
+  }
+  .club-picker-title {
+    @apply text-center font-display text-3xl font-bold tracking-tight sm:text-5xl;
+  }
+  .club-picker-grid {
+    @apply flex max-w-5xl flex-wrap justify-center gap-6 sm:gap-10;
+  }
+  .club-tile {
+    @apply flex w-28 cursor-pointer flex-col items-center gap-3 rounded-2xl outline-none sm:w-36;
+  }
+  .club-tile-avatar {
+    @apply relative grid size-28 place-items-center overflow-hidden rounded-full ring-deep-foreground transition-[box-shadow,transform] duration-(--gp-duration-fast) sm:size-36;
+  }
+  .club-tile:hover .club-tile-avatar,
+  .club-tile:focus-visible .club-tile-avatar {
+    @apply scale-105 ring-4;
+  }
+  .club-tile-name {
+    @apply max-w-full truncate text-sm text-deep-muted transition-colors duration-(--gp-duration-fast) sm:text-base;
+  }
+  .club-tile:hover .club-tile-name,
+  .club-tile:focus-visible .club-tile-name {
+    @apply text-deep-foreground;
+  }
+  .club-tile-edit {
+    @apply absolute inset-0 grid place-items-center bg-scrim text-scrim-foreground;
+  }
+  .club-tile-add {
+    @apply border-2 border-dashed border-deep-muted/60 bg-glass text-deep-muted;
+  }
+  /* The photo viewer: the photo fitted to the dialog, scrolling when zoomed in past it. */
+  .photo-viewer-stage {
+    @apply grid max-h-[70svh] min-h-64 overflow-auto rounded-lg bg-muted;
+  }
+  .photo-viewer-image {
+    @apply m-auto block h-auto max-w-none select-none;
+  }
+  /* Club photos on the club page open the viewer (or the upload dialog when there's none). */
+  .club-photo-button {
+    @apply cursor-zoom-in focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none;
+  }
+  .club-photo-button[data-empty] {
+    @apply cursor-pointer;
+  }
+  /* Shareable player images (PlayerShareDialog): previews in the cards' 4:5 shape. */
+  .share-card-grid {
+    @apply grid min-h-0 grid-cols-2 gap-4 overflow-y-auto pr-1 sm:grid-cols-3;
+  }
+  .share-card-preview {
+    @apply aspect-[4/5] w-full rounded-lg border bg-muted object-cover;
+  }
+  /* Grids of club and session cards. */
+  .club-card-grid {
+    @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  /* The check-in QR: square, as large as the dialog allows. The code draws its own white quiet zone. */
+  .check-in-qr {
+    @apply mx-auto aspect-square w-full max-w-72 overflow-hidden rounded-xl;
+  }
+}
+
+@layer components {
+  /* App shell, two-tone: the charcoal sidebar frames the page, which sits inset as a light rounded panel. */
+  /* The right of the shell: the sidebar's colour, holding the breadcrumbs and the page panel. */
+  .app-shell-frame {
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+  }
+  /* The page itself: a light rounded panel on the frame. */
+  .app-shell-page {
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-xl bg-background shadow-md md:rounded-xl;
+  }
+  /* Phones: the logo and menu button on the frame, above the breadcrumbs. */
+  .app-shell-mobile-header {
+    @apply flex items-center gap-2 border-b border-sidebar-border px-4 py-3 md:hidden;
+  }
+  /* Its header: logo and collapse button in a row, stacked in the rail. */
+  .app-sidebar-brand {
+    @apply flex items-center justify-between gap-2 px-1.5 pt-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-3;
+  }
+  /* Square icon tile beside a switcher's name (session); the same size as an avatar so the rail lines up. */
+  .sidebar-tile {
+    @apply grid size-10 shrink-0 place-items-center rounded-xl bg-sidebar-accent text-sidebar-primary;
+  }
+  /* Two-line label in a large sidebar button: a small caption above the name. */
+  .sidebar-label {
+    @apply grid min-w-0 flex-1 text-left leading-tight;
+  }
+  .sidebar-caption {
+    @apply truncate text-xs font-normal text-sidebar-foreground/70;
+  }
+  /* A note card at the foot of the sidebar (guest mode), hidden in the rail. */
+  .sidebar-note {
+    @apply grid gap-1 rounded-xl bg-sidebar-accent p-3 text-xs text-sidebar-foreground group-data-[collapsible=icon]:hidden;
+  }
+}
+
+@layer components {
+  /* Club badge icons (ClubBadgeIcon): GIFs and images in a round medal frame. */
+  .club-badge-icon {
+    @apply inline-block size-10 shrink-0 rounded-full bg-muted object-cover ring-1 ring-border;
+  }
+  .club-badge-icon-empty {
+    @apply grid place-items-center text-muted-foreground *:size-1/2;
+  }
+  .club-badge-card {
+    @apply h-full;
+  }
+  /* The badge dialog's form: fields scroll, the footer with Create and Cancel stays put. */
+  .badge-form {
+    @apply flex min-h-0 flex-1 flex-col gap-4;
+  }
+  .badge-form-body {
+    @apply grid min-h-0 flex-1 gap-5 overflow-y-auto pr-1;
+  }
+  /* A badge condition: "At least [n] [metric] [remove]", wrapping on phones. */
+  .badge-condition-row {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  /* GIF search results (GifSearch): square tiles, three across on phones. */
+  .gif-grid {
+    @apply grid max-h-72 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4;
+  }
+  .gif-tile {
+    @apply relative block aspect-square w-full overflow-hidden rounded-md bg-muted outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-ring *:[img]:size-full *:[img]:object-cover;
+  }
+  .gif-tile-picked {
+    @apply ring-2 ring-primary;
+  }
+  .gif-tile-check {
+    @apply absolute top-1 right-1 size-5 rounded-full bg-primary p-0.5 text-primary-foreground;
+  }
+  /* A club badge on a leaderboard or the members table: its icon and name. */
+  .club-badge-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border bg-card py-0.5 pr-2.5 pl-0.5 text-xs font-medium;
+  }
+}
+
+@layer components {
+  /* A club photo at its saved position (PositionedPhoto): fills its frame, cropped and zoomed around the kept point. */
+  .positioned-photo {
+    @apply absolute inset-0 size-full object-cover select-none;
+  }
+  /* The photo editor's alignment frame: the photo's real shape, dragged with a pointer or the arrow keys. */
+  .photo-aligner {
+    @apply relative cursor-grab touch-none overflow-hidden border bg-muted outline-none active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50;
+  }
+  .photo-aligner-cover {
+    @apply aspect-[3/1] w-full rounded-xl sm:aspect-[4/1];
+  }
+  .photo-aligner-avatar {
+    @apply mx-auto size-48 rounded-full;
+  }
+  /* Club colours (ClubAppearanceCard): preset swatches showing the sidebar with an accent dot. */
+  .theme-presets {
+    @apply flex flex-wrap gap-2;
+  }
+  .theme-preset {
+    @apply flex items-center gap-2 rounded-lg border bg-card py-1.5 pr-3 pl-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50;
+  }
+  .theme-preset-picked {
+    @apply border-primary ring-1 ring-primary;
+  }
+  .theme-preset-swatch {
+    @apply grid size-7 place-items-center rounded-md *:size-3 *:rounded-full;
+  }
+  .theme-color-input {
+    @apply h-9 w-14 cursor-pointer rounded-md border bg-card p-1;
+  }
+}
+
+@layer components {
+  /* The app's breadcrumb trail (AppBreadcrumbs): large, earlier steps dimmed, the page on screen bold, "/" between. */
+  /* On the sidebar-coloured frame, in the sidebar's text colours. */
+  .app-breadcrumbs {
+    @apply shrink-0 px-6 pt-3 pb-4 font-display tracking-tight;
+  }
+}
+

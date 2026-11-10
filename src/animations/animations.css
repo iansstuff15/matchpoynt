@@ -1,0 +1,83 @@
+/* Keyframes registered as Tailwind `--animate-*` tokens. Timings come from
+   config/motion.ts through the generated --gp-duration-* / --gp-ease-* vars. */
+
+@theme {
+  --animate-fade-up: fade-up var(--gp-duration-slow) var(--gp-ease-out) both;
+  --animate-fade-in: fade-in var(--gp-duration-base) var(--gp-ease-out) both;
+  --animate-court-pulse: court-pulse 2s var(--gp-ease-in-out) infinite;
+  --animate-flame: flame var(--gp-loop-flicker) ease-in-out infinite;
+  --animate-ember: ember var(--gp-loop-ember) ease-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* The flame icon dances: stretches, leans and dips. */
+  @keyframes flame {
+    0%,
+    100% {
+      transform: scale(1, 1) rotate(-3deg);
+    }
+    25% {
+      transform: scale(0.94, 1.12) rotate(4deg);
+    }
+    50% {
+      transform: scale(1.05, 0.95) rotate(-5deg);
+    }
+    75% {
+      transform: scale(0.97, 1.08) rotate(2deg);
+    }
+  }
+
+  /* An ember drifts up from the flame and burns out. */
+  @keyframes ember {
+    0% {
+      opacity: 0;
+      transform: translate(0, 0) scale(1);
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--ember-drift, 3px), -1.1rem) scale(0.3);
+    }
+  }
+
+  @keyframes court-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
