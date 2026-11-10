@@ -12,6 +12,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# A copy of .env without the dot (e.g. for `vercel env` imports) is just as secret
+/env
 *.local
 
 # Test runs: logs, reports, traces (scripts/test-all.mjs, Playwright)
