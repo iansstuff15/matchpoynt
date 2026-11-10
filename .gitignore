@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Builds
+dist
+**/dist
+dist-ssr
+*.tsbuildinfo
+
+# Environment: secrets stay out of git
+.env
+.env.*
+!.env.example
+*.local
+
+# Test runs: logs, reports, traces (scripts/test-all.mjs, Playwright)
+test/.output/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# Logs (host volumes for containers)
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Signing material: CI secrets only
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Vercel CLI project link and pulled env
+.vercel
+
+# Claude Code: personal settings stay local
+.claude/settings.local.json
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?

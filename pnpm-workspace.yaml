@@ -1,0 +1,10 @@
+packages:
+  - shared
+  - server
+  - test
+allowBuilds:
+  esbuild: true
+
+# The workspace root is the web app, so adding dependencies there is intended
+# (the shadcn CLI runs a plain `pnpm add`).
+ignoreWorkspaceRootCheck: true
