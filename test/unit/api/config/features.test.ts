@@ -11,12 +11,17 @@ describe('features', () => {
   it('falls back to defaults', async () => {
     const f = await load()
     expect(f.web.signIn).toBe(true)
-    expect(f.web.signInApple).toBe(true)
+    expect(f.web.signInGoogle).toBe(true)
+    // Apple stays off until its provider is set up in Firebase.
+    expect(f.web.signInApple).toBe(false)
   })
 
   it('reads per-method sign-in toggles', async () => {
-    vi.stubEnv('FEATURE_WEB_SIGN_IN_APPLE', 'false')
-    expect((await load()).web.signInApple).toBe(false)
+    vi.stubEnv('FEATURE_WEB_SIGN_IN_APPLE', 'true')
+    vi.stubEnv('FEATURE_WEB_SIGN_IN_GOOGLE', 'false')
+    const f = await load()
+    expect(f.web.signInApple).toBe(true)
+    expect(f.web.signInGoogle).toBe(false)
   })
 
   it('reads FEATURE_* variables', async () => {
