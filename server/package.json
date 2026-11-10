@@ -1,0 +1,39 @@
+{
+  "name": "@matchpoynt/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Matchpoynt API: the only place that talks to Supabase and runs business logic.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../.env src/index.ts",
+    "build": "node ../scripts/build-api.mjs",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migration": "drizzle-kit generate --custom --name",
+    "db:migrate": "drizzle-kit migrate",
+    "db:check": "drizzle-kit check",
+    "db:types": "pnpm dlx supabase gen types typescript --linked --schema public > src/types/database.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@jsquash/jpeg": "^1.6.0",
+    "@jsquash/png": "^3.1.1",
+    "@jsquash/webp": "^1.5.0",
+    "@matchpoynt/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.118.0",
+    "hono": "^4.13.14",
+    "jose": "^6.2.16",
+    "wasm-feature-detect": "^1.9.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
+    "esbuild": "^0.28.2",
+    "postgres": "^3.4.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  }
+}
