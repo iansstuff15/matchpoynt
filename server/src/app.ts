@@ -1,3 +1,4 @@
+import { clubImages } from '@matchpoynt/shared'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { requestId } from 'hono/request-id'
@@ -22,7 +23,7 @@ const jsonBodyLimit = bodyLimit({ maxSize: limits.bodyBytes })
 const uploadBodyLimit = bodyLimit({
   maxSize: limits.uploadBodyBytes,
   onError: () => {
-    throw new ApiError('invalid', 'Photos can be up to 5 MB. Pick a smaller one.', { image: 'Too large' })
+    throw new ApiError('invalid', `Photos can be up to ${clubImages.maxBytes / 1024 / 1024} MB. Pick a smaller one.`, { image: 'Too large' })
   },
 })
 

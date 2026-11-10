@@ -22,7 +22,7 @@ describe('sniffImage', () => {
 describe('checkImage', () => {
   it('names the problem', () => {
     expect(() => checkImage(new Uint8Array())).toThrow('Choose a photo')
-    expect(() => checkImage(new Uint8Array(6 * 1024 * 1024))).toThrow('up to 5 MB')
+    expect(() => checkImage(new Uint8Array(6 * 1024 * 1024))).toThrow('up to 4 MB')
     expect(() => checkImage(bytes(1, 2, 3))).toThrow('JPEG, PNG or WebP')
   })
 })

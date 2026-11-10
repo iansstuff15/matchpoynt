@@ -13,9 +13,9 @@ export const clubLimits = {
   recentSessions: 24,
 }
 
-/** Club and session photos: accepted formats and the largest upload. */
+/** Club and session photos: accepted formats and the largest upload (under Vercel's 4.5 MB request limit, with room for the form). */
 export const clubImages = {
-  maxBytes: 5 * 1024 * 1024,
+  maxBytes: 4 * 1024 * 1024,
   types: ['image/jpeg', 'image/png', 'image/webp'] as const,
 }
 
@@ -51,7 +51,7 @@ export const clubBadgeScopes: Record<ClubBadgeScope, { label: string; descriptio
 
 /** Badge icons: GIFs stay animated; other images become WebP. */
 export const clubBadgeIcons = {
-  maxBytes: 5 * 1024 * 1024,
+  maxBytes: 4 * 1024 * 1024,
   types: ['image/gif', 'image/jpeg', 'image/png', 'image/webp'] as const,
 }
 

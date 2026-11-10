@@ -1,4 +1,4 @@
-import type { ClubImageKind, ClubSummary } from '@matchpoynt/shared'
+import { clubImages, type ClubImageKind, type ClubSummary } from '@matchpoynt/shared'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import ClubAppearanceCard from '@/components/club/ClubAppearanceCard'
@@ -48,7 +48,7 @@ export default function ClubInfoPanel({ club, actions }: ClubInfoPanelProps) {
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Photos</CardTitle>
-          <CardDescription>JPEG, PNG or WebP, up to 5 MB.</CardDescription>
+          <CardDescription>JPEG, PNG or WebP, up to {clubImages.maxBytes / 1024 / 1024} MB.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
           <ImageUploadField

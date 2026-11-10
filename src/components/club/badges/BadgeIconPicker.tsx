@@ -41,7 +41,7 @@ export default function BadgeIconPicker({ name, currentUrl, choice, onChoice }: 
 
   const upload = (
     <div className="grid gap-2">
-      <p className="text-sm text-muted-foreground">An animated GIF, or a JPEG, PNG or WebP image, up to 5 MB. GIFs keep moving.</p>
+      <p className="text-sm text-muted-foreground">An animated GIF, or a JPEG, PNG or WebP image, up to {clubBadgeIcons.maxBytes / 1024 / 1024} MB. GIFs keep moving.</p>
       {/* The real file input is hidden; the button opens it. The label names it for screen readers. */}
       <label htmlFor={inputId} className="sr-only">
         Badge icon file

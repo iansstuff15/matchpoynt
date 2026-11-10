@@ -1,4 +1,4 @@
-import type { PhotoPosition } from '@matchpoynt/shared'
+import { clubImages, type PhotoPosition } from '@matchpoynt/shared'
 import ImageUploadField from '@/components/club/ImageUploadField'
 import PhotoAligner from '@/components/club/PhotoAligner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -31,7 +31,7 @@ export default function PhotoEditDialog({ open, label, description, aligning, al
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-display">{field.url ? `Change ${label.toLowerCase()}` : `Add a ${label.toLowerCase()}`}</DialogTitle>
-          <DialogDescription>{field.url ? 'Drag and zoom to frame it, or upload another.' : 'JPEG, PNG or WebP, up to 5 MB.'}</DialogDescription>
+          <DialogDescription>{field.url ? 'Drag and zoom to frame it, or upload another.' : `JPEG, PNG or WebP, up to ${clubImages.maxBytes / 1024 / 1024} MB.`}</DialogDescription>
         </DialogHeader>
         {field.url && (
           <>
