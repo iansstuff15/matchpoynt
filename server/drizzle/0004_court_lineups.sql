@@ -1,0 +1,1 @@
+ALTER TABLE "session_courts" ADD COLUMN "lineup" jsonb DEFAULT '[[],[]]'::jsonb NOT NULL;
