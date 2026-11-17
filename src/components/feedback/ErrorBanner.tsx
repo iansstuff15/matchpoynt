@@ -12,7 +12,7 @@ interface ErrorBannerProps {
   className?: string
 }
 
-/** Says exactly what failed and why. Errors are shown here, never as toasts. */
+/** Says simply what failed and why, with a retry. Errors are shown here, never as toasts. */
 export default function ErrorBanner({ error, action, onRetry, onDismiss, className }: ErrorBannerProps) {
   const report = describeError(error, action)
 
@@ -22,17 +22,6 @@ export default function ErrorBanner({ error, action, onRetry, onDismiss, classNa
       <AlertTitle>{report.title}</AlertTitle>
       <AlertDescription className="grid gap-2">
         <p>{report.message}</p>
-        {report.fields.length > 1 && (
-          <ul className="list-disc pl-4">
-            {report.fields.map(({ field, message }) => (
-              <li key={field}>
-                <span className="font-medium">{field}</span>: {message}
-              </li>
-            ))}
-          </ul>
-        )}
-        {report.hint && <p>{report.hint}</p>}
-        {report.reference && <p className="font-mono text-xs opacity-80">{report.reference}</p>}
         {(onRetry || onDismiss) && (
           <div className="flex flex-wrap gap-2 pt-1">
             {onRetry && (

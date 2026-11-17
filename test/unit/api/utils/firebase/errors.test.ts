@@ -48,6 +48,14 @@ describe('authFailure', () => {
     expect(off.message).toContain('Authentication > Sign-in method')
   })
 
+  it("says to authorize the site's domain when Firebase won't send links to it", () => {
+    for (const code of ['UNAUTHORIZED_DOMAIN', 'INVALID_CONTINUE_URI']) {
+      const refused = authFailure(new FirebaseError(code, 400), "Couldn't send the reset email")
+      expect(refused.code).toBe('unavailable')
+      expect(refused.message).toContain('Authorized domains')
+    }
+  })
+
   it('explains an expired or used link', () => {
     expect(authFailure(new FirebaseError('EXPIRED_OOB_CODE', 400), 'x').code).toBe('unauthorized')
     expect(authFailure(new FirebaseError('INVALID_OOB_CODE', 400), 'x').message).toContain('Request a new one')

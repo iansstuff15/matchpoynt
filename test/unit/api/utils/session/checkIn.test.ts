@@ -109,8 +109,7 @@ describe('check-in', () => {
 })
 
 describe('"already checked in" when adding players', () => {
-  const members = (marked: string[]) =>
-    ['Ana', 'Ben', 'Cy', 'Dee'].map((name, i) => ({ id: `client-${i}`, name, tierId: 'beginner', checkedIn: marked.includes(name) }))
+  const members = (marked: string[]) => ['Ana', 'Ben', 'Cy', 'Dee'].map((name, i) => ({ id: `client-${i}`, name, tierId: 'beginner', checkedIn: marked.includes(name) }))
 
   it('setup players marked as here are checked in and queued; the rest wait to check in', () => {
     const ctx = testContext()

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { addClubBlockedReason, cleanClubInfo, cleanPlan, planToSetup, tierFor, validateClubInfo, validateMember, validatePlan } from '@/utils/club/rules'
 
 const members: ClubMemberView[] = [
-  { id: 'm1', name: 'Ana', contact: null, email: null, linked: false, invite: null, badges: [], tiers: [{ sportId: 'badminton', tierId: 'advanced' }] },
-  { id: 'm2', name: 'Ben', contact: 'ben@example.com', email: null, linked: false, invite: null, badges: [], tiers: [] },
+  { id: 'm1', role: 'member', name: 'Ana', contact: null, email: null, linked: false, invite: null, badges: [], username: null, avatarUrl: null, tiers: [{ sportId: 'badminton', tierId: 'advanced' }] },
+  { id: 'm2', role: 'member', name: 'Ben', contact: 'ben@example.com', email: null, linked: false, invite: null, badges: [], username: null, avatarUrl: null, tiers: [] },
 ]
 
 const plan = (o: Partial<PlannedSessionInput> = {}): PlannedSessionInput => ({
@@ -14,6 +14,7 @@ const plan = (o: Partial<PlannedSessionInput> = {}): PlannedSessionInput => ({
   scoring: { formatId: 'bwf-21', matchFormat: 'doubles' },
   rules: { queueing: 'automatic', autoFill: false, timeLimitMinutes: null, lateJoiners: 'fair' },
   matchmaking: 'rotation',
+  fee: null,
   courts: [{ id: 'c1', label: ' Court 1 ' }],
   memberIds: ['m1', 'm2'],
   ...o,
@@ -21,11 +22,13 @@ const plan = (o: Partial<PlannedSessionInput> = {}): PlannedSessionInput => ({
 
 describe('club info', () => {
   it('trims and keeps an empty description as none', () => {
-    expect(cleanClubInfo({ name: '  Smash Club ', description: '   ' })).toEqual({ name: 'Smash Club', description: null })
+    expect(cleanClubInfo({ name: '  Smash Club ', handle: ' @SmashClub ', description: '   ' })).toEqual({ name: 'Smash Club', handle: 'smashclub', description: null })
   })
   it('names what is wrong', () => {
-    expect(validateClubInfo({ name: ' ', description: null }).name).toContain('name')
-    expect(validateClubInfo({ name: 'A', description: 'x'.repeat(1001) }).description).toContain('1000')
+    expect(validateClubInfo({ name: ' ', handle: 'smash', description: null }).name).toContain('name')
+    expect(validateClubInfo({ name: 'A', handle: 'smash', description: 'x'.repeat(1001) }).description).toContain('1000')
+    expect(validateClubInfo({ name: 'A', handle: '', description: null }).handle).toContain('Pick a handle')
+    expect(validateClubInfo({ name: 'A', handle: 'smash club', description: null }).handle).toContain('letters, numbers, dots and underscores')
   })
   it('caps how many clubs an account runs', () => {
     expect(addClubBlockedReason(19)).toBeNull()
@@ -53,6 +56,10 @@ describe('planToSetup', () => {
       { id: 'm1', name: 'Ana', tierId: 'advanced' },
       { id: 'm2', name: 'Ben', tierId: tierFor(members[1]!, 'badminton') },
     ])
+  })
+  it("carries the plan's fee into the session", () => {
+    const fee = { kind: 'fixed', currency: 'PHP', base: 15_000, perGame: 0 } as const
+    expect(planToSetup(plan({ fee }), members).fee).toEqual(fee)
   })
   it('skips members who have left the club', () => {
     expect(planToSetup(plan({ memberIds: ['m1', 'gone'] }), members).members.map((m) => m.id)).toEqual(['m1'])

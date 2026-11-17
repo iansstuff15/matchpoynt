@@ -19,7 +19,7 @@ test.describe('"Already checked in" when adding players', () => {
   })
 
   test('in setup the box starts unticked; on the board it starts ticked', async ({ page }) => {
-    await page.goto('/app')
+    await page.goto('/app?new=1')
     const setup = page.getByRole('dialog', { name: 'Set up your session' })
     await setup.getByRole('button', { name: 'Next' }).click()
     await expect(setup.getByRole('checkbox', { name: 'Already checked in' })).not.toBeChecked()

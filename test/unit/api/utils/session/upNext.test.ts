@@ -12,8 +12,14 @@ describe('upcomingMatches', () => {
     const s = readySession(setupInput({ members: [...setupInput().members, { id: 'x', name: 'Ivy', tierId: 'beginner' }] }))
     const next = upcomingMatches(s)!
     expect(next.matches.map(([a, b]) => [names(s, a), names(s, b)])).toEqual([
-      [['Ana', 'Cy'], ['Ben', 'Dee']],
-      [['Eli', 'Gus'], ['Fay', 'Hal']],
+      [
+        ['Ana', 'Cy'],
+        ['Ben', 'Dee'],
+      ],
+      [
+        ['Eli', 'Gus'],
+        ['Fay', 'Hal'],
+      ],
     ])
     expect(names(s, next.waiting)).toEqual(['Ivy'])
   })
@@ -39,7 +45,15 @@ describe('upcomingMatches', () => {
 describe('addCourt', () => {
   it('adds an open court with the next free name', () => {
     const ctx = testContext()
-    let s = readySession(setupInput({ courts: [{ id: 'a', label: 'Court 1' }, { id: 'b', label: 'Court 3' }] }), ctx)
+    let s = readySession(
+      setupInput({
+        courts: [
+          { id: 'a', label: 'Court 1' },
+          { id: 'b', label: 'Court 3' },
+        ],
+      }),
+      ctx,
+    )
     s = addCourt(s, ctx)
     expect(s.courts.map((c) => c.label)).toEqual(['Court 1', 'Court 3', 'Court 4'])
     expect(s.courts[2]).toMatchObject({ status: 'open', position: 2, lineup: [[], []] })

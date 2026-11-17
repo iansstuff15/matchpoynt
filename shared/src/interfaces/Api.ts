@@ -1,4 +1,4 @@
-import type { ProfileField } from '../types/account.ts'
+import type { AccountRole, ProfileField } from '../types/account.ts'
 import type { SetupStepId } from '../types/session.ts'
 import type { SportId } from '../types/sport.ts'
 import type { EndedSessionView } from './Session.ts'
@@ -29,9 +29,19 @@ export interface CurrentUser {
   email: string | null
   /** The name to greet them by, once their profile has one. */
   displayName: string | null
+  /** Their unique username, without the "@", once set. */
+  username: string | null
+  /** Their profile photo (`/api/media/...`), or `null`. */
+  avatarUrl: string | null
   /** False until the required profile fields are filled in. */
   profileComplete: boolean
   missing: ProfileField[]
+  /** How they use Matchpoynt; `null` for guests and unfinished profiles. */
+  role: AccountRole | null
+  /** Whether they can create and manage clubs (decided by the API: player-only accounts can't). */
+  canManageClubs: boolean
+  /** Whether they can run the session board, its history and invoices (decided by the API: player-only accounts can't). */
+  canRunSessions: boolean
 }
 
 export interface MeResponse {

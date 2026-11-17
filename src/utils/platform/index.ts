@@ -9,3 +9,8 @@ export function isDesktop(): boolean {
 export function getPlatform(): Platform {
   return isDesktop() ? 'desktop' : 'web'
 }
+
+/** Where "home" links go: the landing page on the website, the board on desktop (which has no landing page). */
+export function homePath(): string {
+  return isDesktop() ? '/app' : '/'
+}

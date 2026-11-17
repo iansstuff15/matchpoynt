@@ -3,7 +3,7 @@ import type { PlayerState, SessionState } from '@/interfaces/SessionState'
 import { features } from '@/config/features'
 import { checkInUrl } from '@/utils/session/checkIn'
 import { publicUrl } from '@/utils/session/publish'
-import { activePlayers, addCourtBlockedReason, removeCourtBlockedReason, endBlockedReason, awaitingCheckIn, fairQueue, isCheckedIn, upcomingMatches, openMatchFor, playersPerMatch, startBlockedReason } from '@/utils/session/engine'
+import { activePlayers, addCourtBlockedReason, removeCourtBlockedReason, endBlockedReason, awaitingCheckIn, fairQueue, isCheckedIn, isOnBreak, onBreak, upcomingMatches, openMatchFor, playersPerMatch, startBlockedReason } from '@/utils/session/engine'
 import { playersPerSide } from '@/utils/session/rules'
 import { courtAssignments, tournamentMatchBlockedReason, tournamentMatchFor } from '@/utils/tournament/play'
 import { heldPlayers } from '@/utils/tournament/progress'
@@ -19,7 +19,8 @@ const toPlayerView = (p: PlayerState): PlayerView => ({
   onCourt: p.status === 'playing',
   checkedIn: isCheckedIn(p),
   // Waiting for their next game since they joined the queue: on check-in, or when their last match finished.
-  waitingSince: p.status === 'waiting' && isCheckedIn(p) ? new Date(p.queuedAt).toISOString() : null,
+  waitingSince: p.status === 'waiting' && isCheckedIn(p) && !isOnBreak(p) ? new Date(p.queuedAt).toISOString() : null,
+  breakSince: p.breakSince != null ? new Date(p.breakSince).toISOString() : null,
 })
 
 function upNextView(state: SessionState): UpNextView | null {
@@ -82,6 +83,7 @@ export function toSessionView(state: SessionState, now: number = Date.now()): Se
     queue: fairQueue(state).map(toPlayerView),
     upNext: upNextView(state),
     awaitingCheckIn: awaitingCheckIn(state).map(toPlayerView),
+    onBreak: onBreak(state).map(toPlayerView),
     // Who's in the running tournament (held out of open play), and whether the board can still change that.
     tournamentCompetitors: competitorIds(state).map((id) => toPlayerView(state.players[id]!)),
     competitorsBlockedReason: state.tournament?.status === 'active' ? competitorsBlockedReason(state) : null,

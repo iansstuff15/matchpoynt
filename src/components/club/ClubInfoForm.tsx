@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import HandleField from '@/components/common/HandleField'
+import { useNameCheck } from '@/utils/hooks/useNameCheck'
 
 interface ClubInfoFormProps {
+  /** The club being edited: its own handle counts as free. */
+  clubId: string
   initial: ClubInfoInput
   pending: boolean
   /** The last failed save. The API decides what's valid. */
@@ -21,8 +25,9 @@ interface ClubInfoFormProps {
 }
 
 /** A club's name and description, for creating a club and editing it. */
-export default function ClubInfoForm({ initial, pending, error, action, submitLabel, submitIcon: SubmitIcon = Check, onSubmit, onCancel }: ClubInfoFormProps) {
+export default function ClubInfoForm({ clubId, initial, pending, error, action, submitLabel, submitIcon: SubmitIcon = Check, onSubmit, onCancel }: ClubInfoFormProps) {
   const [info, setInfo] = useState(initial)
+  const handle = useNameCheck('handle', info.handle, clubId)
   const nameId = useId()
   const descriptionId = useId()
   const submit = () => onSubmit(info)
@@ -47,6 +52,7 @@ export default function ClubInfoForm({ initial, pending, error, action, submitLa
           onChange={(e) => setInfo({ ...info, name: e.target.value })}
         />
       </div>
+      <HandleField label="Handle" value={info.handle} onChange={(value) => setInfo({ ...info, handle: value })} check={handle} hint="The club's unique name on Matchpoynt." />
       <div className="grid gap-2">
         <Label htmlFor={descriptionId}>Description</Label>
         <Textarea
@@ -67,7 +73,7 @@ export default function ClubInfoForm({ initial, pending, error, action, submitLa
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || !handle.available}>
           {pending ? <LoaderCircle className="animate-spin" /> : <SubmitIcon />}
           {submitLabel}
         </Button>

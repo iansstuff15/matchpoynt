@@ -1,0 +1,1 @@
+ALTER TABLE "club_join_requests" ADD COLUMN "avatar_path" text;

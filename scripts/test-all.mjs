@@ -107,7 +107,10 @@ const chosen = suites.filter((s) => (list('only').length === 0 || list('only').i
 if (chosen.length === 0) fail('Those options leave no suite to run.')
 
 // ── Output ───────────────────────────────────────────────────────────────────
-const stamp = () => new Date().toISOString().replace('T', ' ').slice(0, 19)
+// A function declaration, so fail() can use it while the arguments are still being read.
+function stamp() {
+  return new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
 const log = (emoji, message) => console.log(`${emoji} [${stamp()}] ${message}`)
 function fail(message) {
   console.error(`❌ [${stamp()}] ${message}`)

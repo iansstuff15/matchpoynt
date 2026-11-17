@@ -1,5 +1,5 @@
 import type { PlayerView } from '@matchpoynt/shared'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { Coffee, GripVertical, Trash2 } from 'lucide-react'
 import DraggablePlayer from '@/components/session/dnd/DraggablePlayer'
 import WaitTime from '@/components/session/queue/WaitTime'
 import { Badge } from '@/components/ui/badge'
@@ -13,10 +13,11 @@ interface QueueRowProps {
   /** The queue panel's clock (API time), for the wait time. */
   now: number
   onRemove: (playerId: string) => void
+  onBreak: (playerId: string) => void
 }
 
-/** One checked-in player waiting in the queue: name, wait time, games and remove on one line, skill tier below. Drag the name onto a court side. */
-export default function QueueRow({ player, position, tierLabel, now, onRemove }: QueueRowProps) {
+/** One checked-in player waiting in the queue: name, wait time, games, a break and remove on one line, skill tier below. Drag the name onto a court side. */
+export default function QueueRow({ player, position, tierLabel, now, onRemove, onBreak }: QueueRowProps) {
   return (
     <li className="flex items-start gap-3 py-2">
       <span className="w-6 pt-1.5 text-right text-sm text-muted-foreground tabular-nums">{position}</span>
@@ -30,6 +31,9 @@ export default function QueueRow({ player, position, tierLabel, now, onRemove }:
           </DraggablePlayer>
           <WaitTime waitingSince={player.waitingSince} now={now} />
           <span className="text-xs whitespace-nowrap text-muted-foreground">{player.gamesPlayed} played</span>
+          <Button variant="ghost" size="icon-sm" onClick={() => onBreak(player.id)} aria-label={`Give ${player.name} a break`} title="Take a break">
+            <Coffee />
+          </Button>
           <Button variant="ghost" size="icon-sm" onClick={() => onRemove(player.id)} aria-label={`Remove ${player.name} from the session`}>
             <Trash2 />
           </Button>

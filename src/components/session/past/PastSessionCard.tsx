@@ -10,7 +10,7 @@ import { formatWhen } from '@/utils/time/formatWhen'
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
-/** A finished session in Past sessions: when it ran and how big it was. Opens its page with the final leaderboard, or deletes it. */
+/** A finished session on the session board: when it ran and how big it was. Opens its page with the final leaderboard, or deletes it. */
 interface PastSessionCardProps {
   session: EndedSessionView
   deleting: boolean

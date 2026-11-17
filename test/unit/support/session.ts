@@ -28,6 +28,7 @@ export function setupInput(overrides: Partial<SessionSetupInput> = {}): SessionS
     scoring: { formatId: 'bwf-21', matchFormat: 'doubles' },
     rules: { queueing: 'automatic', autoFill: false, timeLimitMinutes: null, lateJoiners: 'fair' },
     matchmaking: 'rotation',
+    fee: null,
     courts: [1, 2, 3, 4].map((i) => ({ id: `client-court-${i}`, label: `Court ${i}` })),
     members: ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal'].map((name, i) => ({
       id: `client-${i}`,

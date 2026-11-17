@@ -39,3 +39,11 @@ export async function loadPublicResults(db: Db, slug: string) {
   const matches: MatchState[] = row.matches.map((m) => toMatch({ ...m, session_id: '', sport_id: row.sport_id, court_id: null }))
   return { sportId: row.sport_id as SportId, status: row.status, updatedAt: row.updated_at, players, matches, clubBadges: (row.club_badges ?? []).map(toBadgeView) }
 }
+
+/** The club that runs a published session (public_session_club): its name and photo path; `null` without one. */
+export async function loadPublicSessionClub(db: Db, slug: string): Promise<{ name: string; avatarPath: string | null } | null> {
+  const { data, error } = await db.rpc('public_session_club', { p_slug: slug })
+  dbFail(error)
+  const r = data as unknown as { name: string; avatar_path: string | null } | null
+  return r && { name: r.name, avatarPath: r.avatar_path }
+}

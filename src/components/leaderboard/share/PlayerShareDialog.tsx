@@ -1,6 +1,9 @@
-import type { ClubBadgeView, LeaderboardEntry } from '@matchpoynt/shared'
+import type { ClubBadgeView, LeaderboardClub, LeaderboardEntry } from '@matchpoynt/shared'
 import { Download, Share2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import ShareBackgroundPicker from '@/components/leaderboard/share/ShareBackgroundPicker'
+import type { ShareBackground } from '@/types/leaderboard'
 import ShareCardPreview from '@/components/leaderboard/share/ShareCardPreview'
 import ShareCardPreviewSkeleton from '@/components/leaderboard/share/ShareCardPreviewSkeleton'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
@@ -19,21 +22,24 @@ interface PlayerShareDialogProps {
   shareUrl: string | null
   /** The club badges this player earned, one image each. */
   clubBadges: ClubBadgeView[]
+  /** The club that runs the session, drawn at the top of each image. */
+  club: LeaderboardClub | null
   onOpenChange: (open: boolean) => void
 }
 
 /**
  * A player's shareable images: a summary card and one per badge the API gave
- * them, drawn in the browser. Share them all at once (where the device can) or
+ * them, drawn in the browser on a black, white or transparent background. Share them all at once (where the device can) or
  * download them one by one or together.
  */
-export default function PlayerShareDialog({ open, entry, sport, shareUrl, clubBadges, onOpenChange }: PlayerShareDialogProps) {
+export default function PlayerShareDialog({ open, entry, sport, shareUrl, clubBadges, club, onOpenChange }: PlayerShareDialogProps) {
   const badgeCount = entry.badges.length + clubBadges.length
+  const [background, setBackground] = useState<ShareBackground>('black')
   const footer = shareUrl ? shareUrl.replace(/^https?:\/\//, '') : `${sport.name} on Matchpoynt`
   const cards = useQuery({
     // Redrawn whenever the player's numbers or badges change.
-    queryKey: ['share-cards', entry, sport.id, footer, clubBadges.map((b) => b.id)],
-    queryFn: () => renderPlayerCards(entry, { sportName: sport.name, scoreUnit: sport.terminology.scoreUnit, footer, clubBadges }),
+    queryKey: ['share-cards', entry, sport.id, footer, clubBadges.map((b) => b.id), background, club],
+    queryFn: () => renderPlayerCards(entry, { sportName: sport.name, scoreUnit: sport.terminology.scoreUnit, footer, clubBadges, background, club }),
     enabled: open,
     staleTime: Infinity,
     gcTime: 60_000,
@@ -67,6 +73,7 @@ export default function PlayerShareDialog({ open, entry, sport, shareUrl, clubBa
               : 'A summary card. Badges they earn later get their own images.'}
           </DialogDescription>
         </DialogHeader>
+        <ShareBackgroundPicker value={background} onChange={setBackground} />
         {cards.isError ? (
           <ErrorBanner error={cards.error} action={`create ${entry.name}'s images`} onRetry={() => void cards.refetch()} />
         ) : (
@@ -77,6 +84,7 @@ export default function PlayerShareDialog({ open, entry, sport, shareUrl, clubBa
                   <ShareCardPreview
                     key={card.fileName}
                     card={card}
+                    transparent={background === 'transparent'}
                     alt={`${card.title} card for ${entry.name}`}
                     onDownload={() => {
                       downloadImage(card)

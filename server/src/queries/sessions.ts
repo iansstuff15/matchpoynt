@@ -1,15 +1,17 @@
 import { sessionHistory, sportRules } from '@matchpoynt/shared'
-import type { ActiveSessionSummary, EndedSessionsResponse, EndedSessionView, GameScore, MatchSide, SessionRules, SessionSettings, ScoringSettings, SportId } from '@matchpoynt/shared'
+import type { ActiveSessionSummary, EndedSessionsResponse, EndedSessionView, FeeScheme, GameScore, MatchSide, SessionRules, SessionSettings, ScoringSettings, SportId } from '@matchpoynt/shared'
 import type { CourtState, MatchState, PlayerState, SessionState } from '@/interfaces/SessionState'
 import type { TournamentState } from '@/interfaces/TournamentState'
 import { features } from '@/config/features'
 import type { Json, Tables } from '@/types/database'
 import { mediaUrl } from '@/utils/club/media'
+import type { InvoiceDraft } from '@/utils/fees/invoices'
 import { ApiError } from '@/utils/http/errors'
 import { dbFail } from '@/utils/supabase/errors'
 import type { Db } from '@/utils/supabase/client'
 
 const tournamentsOn = () => features().web.tournaments
+const feesOn = () => features().web.fees
 
 const ms = (iso: string) => new Date(iso).getTime()
 const iso = (time: number) => new Date(time).toISOString()
@@ -25,6 +27,7 @@ const toPlayer = (r: Tables<'session_players'>): PlayerState => ({
   status: r.status as PlayerState['status'],
   active: r.active,
   checkedInAt: r.checked_in_at ? ms(r.checked_in_at) : null,
+  breakSince: r.break_since ? ms(r.break_since) : null,
 })
 
 export const toMatch = (r: Tables<'matches'>): MatchState => ({
@@ -44,6 +47,8 @@ const toSettings = (r: Tables<'sessions'>): SessionSettings => ({
   // Sessions saved before a rule existed get its default.
   rules: { queueing: 'automatic', ...(r.rules as unknown as Partial<SessionRules>) } as SessionRules,
   matchmaking: r.matchmaking as SessionSettings['matchmaking'],
+  // With fees switched off, sessions run without one (and saves leave the stored fee alone).
+  fee: feesOn() ? ((r.fee as unknown as FeeScheme | null) ?? null) : null,
 })
 
 /** The club that runs a session, or `null` (started from the board, or not the caller's). */
@@ -65,7 +70,16 @@ async function loadById(db: Db, id: string): Promise<SessionState | null> {
     db.from('matches').select('*').eq('session_id', id).is('finished_at', null),
   ])
   dbFail(courts.error ?? players.error ?? matches.error)
+  return stateFromRows(row, courts.data ?? [], players.data ?? [], matches.data ?? [])
+}
 
+/** A session's state from its rows: the session, its courts, roster and open matches. */
+export function stateFromRows(
+  row: Tables<'sessions'>,
+  courts: Tables<'session_courts'>[],
+  players: Tables<'session_players'>[],
+  matches: Tables<'matches'>[],
+): SessionState {
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -78,7 +92,7 @@ async function loadById(db: Db, id: string): Promise<SessionState | null> {
     settings: toSettings(row),
     tournament: tournamentsOn() ? ((row.tournament as unknown as TournamentState | null) ?? null) : null,
     tournamentSlug: row.tournament_slug,
-    courts: (courts.data ?? []).map(
+    courts: [...courts].sort((a, b) => a.position - b.position).map(
       (c): CourtState => ({
         id: c.id,
         label: c.label,
@@ -89,8 +103,8 @@ async function loadById(db: Db, id: string): Promise<SessionState | null> {
         tournament: tournamentsOn() && c.tournament,
       }),
     ),
-    players: Object.fromEntries((players.data ?? []).map((p) => [p.id, toPlayer(p)])),
-    matches: Object.fromEntries((matches.data ?? []).map((m) => [m.id, toMatch(m)])),
+    players: Object.fromEntries(players.map((p) => [p.id, toPlayer(p)])),
+    matches: Object.fromEntries(matches.filter((m) => !m.finished_at).map((m) => [m.id, toMatch(m)])),
   }
 }
 
@@ -169,6 +183,8 @@ export function savePayload(state: SessionState) {
       matchmaking: state.settings.matchmaking,
       // Only sent while tournaments are on: save_session keeps the stored tournament when the key is missing.
       ...(tournamentsOn() && { tournament: state.tournament as unknown as Json }),
+      // The same for the fee: save_session keeps the stored one when the key is missing.
+      ...(feesOn() && { fee: state.settings.fee as unknown as Json }),
     },
     p_courts: state.courts.map((c) => ({ id: c.id, label: c.label, position: c.position, status: c.status, lineup: c.lineup, tournament: c.tournament })),
     p_players: Object.values(state.players).map((p) => ({
@@ -181,6 +197,7 @@ export function savePayload(state: SessionState) {
       status: p.status,
       active: p.active,
       checked_in_at: p.checkedInAt === null ? null : iso(p.checkedInAt),
+      break_since: p.breakSince == null ? null : iso(p.breakSince),
     })),
     p_matches: Object.values(state.matches).map((m) => ({
       id: m.id,
@@ -196,8 +213,13 @@ export function savePayload(state: SessionState) {
   }
 }
 
-export async function endSession(db: Db, id: string, expectedVersion: number): Promise<void> {
-  const { error } = await db.rpc('end_session', { p_session_id: id, p_expected_version: expectedVersion })
+/** Ends a session and writes its invoices (`sessionInvoices`), in one transaction with the version check. */
+export async function endSession(db: Db, id: string, expectedVersion: number, invoices: InvoiceDraft[]): Promise<void> {
+  const { error } = await db.rpc('end_session', {
+    p_session_id: id,
+    p_expected_version: expectedVersion,
+    p_invoices: invoices.map((i) => ({ id: i.id, player_id: i.playerId, name: i.name, games: i.games, amount: i.amount, currency: i.currency })),
+  })
   dbFail(error)
 }
 
@@ -309,4 +331,5 @@ const endedView = (row: Tables<'sessions'>, matchesFinished: number, players: nu
   endedAt: row.ended_at ?? row.updated_at,
   matchesFinished,
   players,
+  hasFee: feesOn() && row.fee !== null,
 })

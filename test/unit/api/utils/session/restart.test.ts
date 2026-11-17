@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionState } from '@/interfaces/SessionState'
-import { assignPlayer, awaitingCheckIn, cancelMatch, checkInPlayer, removeCourt, removeCourtBlockedReason, fairQueue, finishMatch, openMatchFor, restartMatch, restartSession, startMatch } from '@/utils/session/engine'
+import {
+  assignPlayer,
+  awaitingCheckIn,
+  cancelMatch,
+  checkInPlayer,
+  removeCourt,
+  removeCourtBlockedReason,
+  fairQueue,
+  finishMatch,
+  openMatchFor,
+  restartMatch,
+  restartSession,
+  startMatch,
+} from '@/utils/session/engine'
 import { createSession } from '@/utils/session/setup'
 import { toSessionView } from '@/utils/session/view'
 import { setupInput, testContext } from '@test/session'
@@ -18,7 +31,15 @@ function running(ctx: ReturnType<typeof testContext>): SessionState {
   ctx.tick()
   s = startMatch(s, s.courts[1]!.id, ctx)
   ctx.tick()
-  s = finishMatch(s, s.courts[1]!.id, [{ a: 21, b: 10 }, { a: 21, b: 12 }], ctx)
+  s = finishMatch(
+    s,
+    s.courts[1]!.id,
+    [
+      { a: 21, b: 10 },
+      { a: 21, b: 12 },
+    ],
+    ctx,
+  )
   ctx.tick()
   return startMatch(s, s.courts[0]!.id, ctx)
 }
@@ -41,7 +62,7 @@ describe('restartMatch', () => {
     expect(Object.values(after.players).map((p) => p.gamesPlayed)).toEqual(Object.values(s.players).map((p) => p.gamesPlayed))
   })
 
-  it("says why when the court has no match on", () => {
+  it('says why when the court has no match on', () => {
     const ctx = testContext()
     const s = running(ctx)
     expect(() => restartMatch(s, s.courts[2]!.id, ctx)).toThrow('Court 3 has no match in progress to restart.')
@@ -177,7 +198,15 @@ describe('wait times', () => {
     expect(onCourt.waitingSince).toBeNull()
 
     ctx.tick(60_000)
-    s = finishMatch(s, s.courts[0]!.id, [{ a: 21, b: 10 }, { a: 21, b: 12 }], ctx)
+    s = finishMatch(
+      s,
+      s.courts[0]!.id,
+      [
+        { a: 21, b: 10 },
+        { a: 21, b: 12 },
+      ],
+      ctx,
+    )
     expect(toSessionView(s).queue.find((p) => p.id === onCourt.id)!.waitingSince).toBe(new Date(ctx.now).toISOString())
   })
 })

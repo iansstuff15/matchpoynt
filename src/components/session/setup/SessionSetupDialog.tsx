@@ -2,6 +2,7 @@ import type { SessionSetupInput, SetupStepId } from '@matchpoynt/shared'
 import { ArrowLeft, ArrowRight, Check, LoaderCircle, Play } from 'lucide-react'
 import { useState } from 'react'
 import CourtsStep from '@/components/session/setup/CourtsStep'
+import FeesStep from '@/components/session/setup/FeesStep'
 import MatchmakingStep from '@/components/session/setup/MatchmakingStep'
 import MembersStep from '@/components/session/setup/MembersStep'
 import RulesStep from '@/components/session/setup/RulesStep'
@@ -9,11 +10,13 @@ import ScoringStep from '@/components/session/setup/ScoringStep'
 import SetupStepNav from '@/components/session/setup/SetupStepNav'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { setupSteps } from '@/config/sessionSetup'
+import { setupSteps as allSteps } from '@/config/sessionSetup'
 import type { SetupMode } from '@/types/session'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
 import { ApiRequestError } from '@/utils/api/errors'
+import { firstIncomplete, setupStepMissing } from '@/utils/forms/requiredFields'
 import type { DraftLocks } from '@/utils/forms/sessionDraft'
+import { useFeatures } from '@/utils/hooks/useFeatures'
 
 interface SessionSetupDialogProps {
   open: boolean
@@ -29,7 +32,8 @@ interface SessionSetupDialogProps {
 
 type FormProps = Omit<SessionSetupDialogProps, 'open' | 'onOpenChange'> & { onCancel: () => void }
 
-const stepIds = new Set<string>(setupSteps.map((s) => s.id))
+const stepIds = new Set<string>(allSteps.map((s) => s.id))
+const stepWords = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven']
 
 /** Splits a server error into per-step messages and a general one. */
 function stepErrors(error: unknown) {
@@ -42,6 +46,8 @@ function stepErrors(error: unknown) {
 
 /** Draft state lives here, so it resets every time the dialog opens. */
 function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }: FormProps) {
+  const { web } = useFeatures()
+  const setupSteps = allSteps.filter((s) => !s.feature || web[s.feature])
   const [setup, setSetup] = useState(initial)
   const [stepId, setStepId] = useState<SetupStepId>('courts')
   const errors = stepErrors(error)
@@ -63,6 +69,9 @@ function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }:
   }
   const stepProps = { setup, onChange: setSetup }
   const submitIcon = pending ? <LoaderCircle className="animate-spin" /> : null
+  // What this step still needs before Next (creating only; settings can be saved from any step).
+  const missing = setupStepMissing(step.id, setup)
+  const lockedAfter = mode === 'create' ? firstIncomplete(setupSteps, (id) => setupStepMissing(id, setup)) : null
 
   return (
     <>
@@ -70,13 +79,13 @@ function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }:
         <DialogTitle className="font-display text-xl">{mode === 'create' ? 'Set up your session' : 'Session settings'}</DialogTitle>
         <DialogDescription>
           {mode === 'create'
-            ? 'Five quick steps. You can change any of this later from the board.'
+            ? `${stepWords[setupSteps.length] ?? setupSteps.length} quick steps. You can change any of this later from the board.`
             : 'Changes apply to the next match. Matches in progress keep their courts and players.'}
         </DialogDescription>
       </DialogHeader>
 
       <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[11rem_1fr]">
-        <SetupStepNav current={step.id} errors={errors} onSelect={setStepId} />
+        <SetupStepNav steps={setupSteps} current={step.id} errors={errors} lockedAfter={lockedAfter} onSelect={setStepId} />
         <section aria-labelledby="setup-step-title" className="min-h-0 overflow-y-auto pr-1">
           <h3 id="setup-step-title" className="font-display text-lg font-semibold">
             {step.label}
@@ -95,9 +104,15 @@ function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }:
           {step.id === 'scoring' && <ScoringStep {...stepProps} />}
           {step.id === 'rules' && <RulesStep {...stepProps} />}
           {step.id === 'matchmaking' && <MatchmakingStep {...stepProps} />}
+          {step.id === 'fees' && <FeesStep {...stepProps} />}
         </section>
       </div>
 
+      {missing && (
+        <p role="status" className="text-right text-sm text-muted-foreground">
+          {missing}
+        </p>
+      )}
       <DialogFooter className="gap-2 sm:justify-between">
         {mode === 'create' ? (
           <>
@@ -106,12 +121,12 @@ function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }:
               Back
             </Button>
             {isLast ? (
-              <Button type="button" onClick={() => onSubmit(setup)} disabled={pending}>
+              <Button type="button" onClick={() => onSubmit(setup)} disabled={pending || lockedAfter !== null}>
                 {submitIcon ?? <Play />}
                 Start session
               </Button>
             ) : (
-              <Button type="button" onClick={() => go(1)}>
+              <Button type="button" onClick={() => go(1)} disabled={missing !== null}>
                 Next
                 <ArrowRight />
               </Button>
@@ -122,7 +137,7 @@ function SetupForm({ mode, initial, locks, pending, error, onSubmit, onCancel }:
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="button" onClick={() => onSubmit(setup)} disabled={pending}>
+            <Button type="button" onClick={() => onSubmit(setup)} disabled={pending || missing !== null}>
               {submitIcon ?? <Check />}
               Save changes
             </Button>

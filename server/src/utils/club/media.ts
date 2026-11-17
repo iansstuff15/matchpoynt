@@ -15,7 +15,10 @@ type PhotoType = (typeof clubImages.types)[number]
 const extensions: Record<ImageType, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-const pathPattern = new RegExp(`^${uuid}/${uuid}/(avatar|cover|plan|badge)-${uuid}\\.(jpg|png|webp|gif)$`)
+/** The owner folder is the account id: a Firebase UID (letters and digits), or a UUID. */
+const owner = '[A-Za-z0-9_-]{1,128}'
+const pathPattern = new RegExp(`^${owner}/${uuid}/(avatar|cover|plan|badge|qr)-${uuid}\\.(jpg|png|webp|gif)$`)
+const profilePattern = new RegExp(`^${owner}/profile/avatar-${uuid}\\.webp$`)
 
 /** What an image file really is, from its first bytes; the declared type and name are not trusted. */
 export function sniffImage(bytes: Uint8Array): ImageType | null {
@@ -52,15 +55,25 @@ export function checkBadgeIcon(bytes: Uint8Array): ImageType {
 
 /**
  * A new object name for a club photo (`avatar`, `cover`), a planned
- * session's cover (`plan`) or a club badge's icon (`badge`). Photos are stored
+ * session's cover (`plan`), a club badge's icon (`badge`) or a payment QR code (`qr`, lossless). Photos are stored
  * as WebP (`toWebp`); older ones may still be JPEG or PNG, which the media
  * route keeps serving. Badge icons that are GIFs stay GIFs, so they keep moving.
  */
-export function mediaPath(ownerId: string, clubId: string, kind: ClubImageKind | 'plan' | 'badge', id: string, type: ImageType = 'image/webp'): string {
+export function mediaPath(ownerId: string, clubId: string, kind: ClubImageKind | 'plan' | 'badge' | 'qr', id: string, type: ImageType = 'image/webp'): string {
   return `${ownerId}/${clubId}/${kind}-${id}.${extensions[type]}`
 }
 
-export const isMediaPath = (path: string) => pathPattern.test(path)
+export const isMediaPath = (path: string) => pathPattern.test(path) || profilePattern.test(path)
+
+/** A person's profile photo, `<account id>/profile/avatar-<uuid>.webp` (in their own folder, as Storage RLS requires). */
+export const profileMediaPath = (userId: string, id: string) => `${userId}/profile/avatar-${id}.webp`
+
+export const isProfileMediaPath = (path: string) => profilePattern.test(path)
+
+/** Where the web app loads a profile photo; `null` without one. Profile photos follow sign-in, not clubs. */
+export function profileMediaUrl(path: string | null): string | null {
+  return path && features().web.signIn ? `/api/media/${path}` : null
+}
 
 /** Folder of everything a club has uploaded, for clean-up when the club is deleted. */
 export const clubFolder = (ownerId: string, clubId: string) => `${ownerId}/${clubId}`

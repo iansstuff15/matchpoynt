@@ -21,6 +21,7 @@ export function newSessionDraft(sportId: SportId): SessionSetupInput {
     scoring: defaultScoring(sportId),
     rules: { ...sessionDefaults.rules },
     matchmaking: sessionDefaults.matchmaking,
+    fee: null,
     courts: Array.from({ length: sessionDefaults.courtCount }, (_, i) => newCourtDraft(i)),
     members: [],
   }
@@ -34,12 +35,13 @@ export function withSport(draft: SessionSetupInput, sportId: SportId): SessionSe
 
 /** The running session as an editable draft. */
 export function draftFromSession(session: SessionView): SessionSetupInput {
-  const { sportId, scoring, rules, matchmaking } = session
+  const { sportId, scoring, rules, matchmaking, fee } = session
   return {
     sportId,
     scoring,
     rules,
     matchmaking,
+    fee,
     courts: session.courts.map(({ id, label }) => ({ id, label })),
     members: session.players.map(({ id, name, tierId, checkedIn }) => ({ id, name, tierId, checkedIn })),
   }

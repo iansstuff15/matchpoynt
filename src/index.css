@@ -62,6 +62,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-logo-ink: var(--logo-ink);
+  --color-logo-accent: var(--logo-accent);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -125,6 +127,50 @@
   .eyebrow-mono {
     @apply font-mono text-xs tracking-wide opacity-80;
   }
+  /*
+   * Liquid glass (LiquidGlass: the site header and its tab bar on phones), after
+   * https://liquidglass.archisvaze.com. Three layers under the content:
+   *   ::after  the page behind, bent along the rim and lit by an SVG filter
+   *            (--liquid-glass-filter, built for the element's size; Chromium only),
+   *            or a frosted blur where that filter isn't available;
+   *   ::before the tint (30% transparent) and a soft white inner glow;
+   *   the element's own outer shadow.
+   * The element must be positioned (relative, fixed…) to hold the layers.
+   * Solid instead when the viewer asks for less transparency.
+   */
+  .liquid-glass {
+    @apply isolate;
+    box-shadow: 0 4px 24px rgb(0 0 0 / 0.18);
+  }
+  .liquid-glass::before {
+    @apply pointer-events-none absolute inset-0 -z-10 rounded-[inherit];
+    content: '';
+    /* 30% transparent. */
+    background-color: color-mix(in oklch, var(--background) 70%, transparent);
+    box-shadow: inset 0 0 20px -5px rgb(255 255 255 / 0.45);
+  }
+  .liquid-glass::after {
+    @apply pointer-events-none absolute inset-0 -z-20 rounded-[inherit];
+    content: '';
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+  .liquid-glass[data-refraction]::after {
+    backdrop-filter: var(--liquid-glass-filter);
+    -webkit-backdrop-filter: var(--liquid-glass-filter);
+  }
+  .liquid-glass-defs {
+    @apply pointer-events-none absolute size-0 overflow-hidden;
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .liquid-glass::before {
+      @apply bg-background;
+    }
+    .liquid-glass::after {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
   .glass-panel {
     @apply rounded-3xl border border-glass-border bg-glass shadow-[0_8px_32px_-8px_rgb(0_0_0/0.35)] backdrop-blur-xl;
   }
@@ -140,13 +186,14 @@
     @apply bg-deep text-deep-foreground;
   }
   .footer-dusk {
-    @apply text-deep-foreground;
+    /* Phones: room at the bottom so the tab bar never covers the last links. */
+    @apply text-deep-foreground max-md:pb-[calc(5rem+env(safe-area-inset-bottom))];
     background-image: linear-gradient(180deg, var(--deep) 0%, var(--deep-strong) 55%, color-mix(in oklch, var(--deep-strong) 70%, black) 100%);
   }
   /* Splash (components/splash/Splash.tsx): wordmark over the page, then a curtain matching the hero frame. */
   /* Centred by layout, not translate: GSAP owns the transform of what it animates. */
   .splash-root {
-    @apply fixed inset-0 z-[100] grid cursor-pointer place-items-center bg-background;
+    @apply fixed inset-0 z-[100] grid cursor-pointer place-items-center overflow-hidden bg-background;
   }
   .splash-stack {
     @apply relative flex flex-col items-center gap-[clamp(1rem,2.5vw,2rem)] px-4;
@@ -157,15 +204,88 @@
     /* Hidden until the wipe starts; the timeline takes over the clip once fonts are ready. */
     clip-path: inset(0 0 100% 0);
   }
-  .splash-word {
-    @apply m-0 font-display leading-[0.9] font-bold whitespace-nowrap;
-    font-size: clamp(4rem, 17vw, 20rem);
-    letter-spacing: -0.05em;
-    background: linear-gradient(120deg, var(--mesh-1), var(--deep) 55%, var(--mesh-4));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    clip-path: inset(100% 0 0 0);
+  /* The splash's logo (LogoMark): its arches crash together in the middle of the screen. */
+  .splash-logo {
+    @apply w-[min(70vw,28rem)] text-logo-ink;
+  }
+  /* SplashHandoff: the splash's last frame while the app loads underneath, then its colours turn to the app's and it fades.
+     Colours change by CSS transition (oklch theme colours can't be tweened by GSAP); custom properties set inline per stage. */
+  .splash-handoff {
+    @apply cursor-default;
+    transition:
+      background-color var(--handoff-colour-ms) var(--gp-ease-in-out),
+      color var(--handoff-colour-ms) var(--gp-ease-in-out),
+      opacity var(--handoff-fade-ms) var(--gp-ease-out);
+  }
+  .splash-handoff[data-stage='leaving'] {
+    @apply pointer-events-none opacity-0;
+  }
+  .splash-handoff-logo {
+    @apply text-current;
+  }
+  .splash-handoff-logo .logo-arch-accent {
+    transition: stroke var(--handoff-colour-ms) var(--gp-ease-in-out);
+  }
+  /* The tagline as the splash left it (the splash fades it in with GSAP), dimmed with the text colour. */
+  .splash-handoff .splash-handoff-tagline {
+    @apply opacity-60;
+    color: inherit;
+  }
+  /* The splash's loading bar (SplashLoadingBar): a thin track in the text colour, a stripe in the accent sweeping
+     across it; once the app has loaded (`data-done`) the stripe fills the track. Colours follow the hand-over's. */
+  .splash-loading-bar {
+    @apply relative h-1 w-[min(60vw,14rem)] overflow-hidden rounded-full animate-fade-in;
+    background-color: color-mix(in oklab, currentColor 14%, transparent);
+  }
+  .splash-loading-bar-fill {
+    @apply absolute inset-y-0 left-0 w-2/5 rounded-full animate-loading-bar;
+    background-color: var(--logo-accent);
+    transition:
+      width var(--handoff-colour-ms, 300ms) var(--gp-ease-out),
+      background-color var(--handoff-colour-ms, 300ms) var(--gp-ease-in-out);
+  }
+  .splash-loading-bar[data-done] .splash-loading-bar-fill {
+    @apply w-full animate-none;
+  }
+  /* Holding in the app's colours (once they've finished changing) before it fades: the logo's arches bob in turn. */
+  /* The cut-out in the ink arch moves with the accent arch, so they stay interlocked. */
+  .splash-handoff[data-stage='holding'] .splash-handoff-logo :is([data-logo-arch], [data-logo-cut]) {
+    @apply animate-arch-hop;
+    transform-box: view-box;
+  }
+  .splash-handoff[data-stage='holding'] .splash-handoff-logo :is([data-logo-arch='accent'], [data-logo-cut]) {
+    animation-delay: calc(var(--gp-loop-arch-bob) / 2);
+  }
+  /* The impact, centred on the logo: hidden until the crash, when GSAP bursts its flash and two rings outwards
+     (animations/splashTimeline.ts, sizes in motion.gsap.splash.ring). All circles, in the accent. */
+  .splash-impact {
+    @apply pointer-events-none invisible absolute top-1/2 left-1/2 -mt-24 -ml-24 size-48 opacity-0;
+  }
+  .splash-impact-flash,
+  .splash-impact-ring {
+    @apply invisible absolute inset-0 rounded-full opacity-0;
+  }
+  .splash-impact-flash {
+    background: radial-gradient(circle, var(--logo-accent) 0%, color-mix(in oklab, var(--logo-accent) 35%, transparent) 45%, transparent 70%);
+  }
+  .splash-impact-ring {
+    @apply border-solid border-logo-accent;
+  }
+  /* The logo (components/brand/LogoMark): the ink arch takes the text colour it sits on, the other the club's accent. */
+  .logo-mark {
+    @apply h-auto overflow-visible;
+  }
+  .logo-arch-ink,
+  .logo-arch-accent {
+    fill: none;
+    stroke-width: 48;
+    stroke-linecap: round;
+  }
+  .logo-arch-ink {
+    stroke: currentColor;
+  }
+  .logo-arch-accent {
+    stroke: var(--logo-accent);
   }
   .splash-tagline {
     @apply text-center font-mono text-xs tracking-wide text-muted-foreground opacity-0 sm:text-sm;
@@ -327,6 +447,10 @@
   .club-hero-avatar {
     @apply -mt-10 size-20 shrink-0 rounded-full border-4 border-background bg-muted shadow-sm sm:-mt-12 sm:size-24;
   }
+  /* A person's photo on their profile: the same circle, with no cover to overlap. */
+  .profile-avatar {
+    @apply size-20 shrink-0 rounded-full border-4 border-background bg-muted shadow-sm sm:size-24;
+  }
   /* Photo picker preview: the cover keeps the banner's shape, the profile photo is square. */
   .image-preview-cover {
     @apply relative aspect-[3/1] w-full overflow-hidden rounded-xl border bg-muted sm:aspect-[4/1];
@@ -440,6 +564,33 @@
   .club-tile:focus-visible .club-tile-name {
     @apply text-deep-foreground;
   }
+  /* The player's club picker (ChooseClubPage): rectangles, no ring, lifting on hover and focus. */
+  .member-club-tile {
+    @apply flex w-44 cursor-pointer flex-col items-center gap-3 rounded-2xl outline-none sm:w-60;
+  }
+  .member-club-tile-media {
+    @apply relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-xl bg-deep transition-transform duration-(--gp-duration-fast);
+  }
+  .member-club-tile:hover .member-club-tile-media,
+  .member-club-tile:focus-visible .member-club-tile-media {
+    @apply scale-105;
+  }
+  .member-club-tile:hover .club-tile-name,
+  .member-club-tile:focus-visible .club-tile-name {
+    @apply text-deep-foreground;
+  }
+  /* Full-screen pages outside the app shell (the start page and the club picker): no header or tab bar. */
+  .full-screen-page {
+    @apply relative flex min-h-svh flex-col overflow-x-clip bg-deep-strong;
+  }
+  /* The club picker's stage: 60% of the screen, the Find clubs sheet the other 40%. */
+  .club-picker-stage {
+    @apply relative min-h-[60svh] flex-none;
+  }
+  /* Find clubs on the club picker: a sheet with rounded top corners, at least the bottom 40% of the screen. */
+  .club-picker-sheet {
+    @apply relative z-10 mx-3 grid min-h-[40svh] sm:mx-6 content-start gap-4 rounded-t-3xl bg-background px-4 pt-8 pb-16 text-foreground sm:px-10;
+  }
   .club-tile-edit {
     @apply absolute inset-0 grid place-items-center bg-scrim text-scrim-foreground;
   }
@@ -467,9 +618,145 @@
   .share-card-preview {
     @apply aspect-[4/5] w-full rounded-lg border bg-muted object-cover;
   }
+  /* The whole leaderboard's image: shown whole, as tall as it is, scrolling inside the dialog. */
+  .leaderboard-image-preview {
+    @apply w-full rounded-lg border bg-muted;
+  }
+  .share-card-transparent {
+    background-color: var(--muted);
+    background-image: conic-gradient(var(--border) 25%, transparent 0 50%, var(--border) 0 75%, transparent 0);
+    background-size: 24px 24px;
+  }
+  /* The share dialog's background choice: a segmented row of pills, the picked one in the accent. */
+  .share-background-option {
+    @apply flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 font-normal has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary has-[[data-state=checked]]:text-primary-foreground has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50;
+  }
   /* Grids of club and session cards. */
+  /* A club's page for players: its cards two to a row on wide screens. */
+  .player-club-grid {
+    @apply grid items-start gap-6 lg:grid-cols-2;
+  }
+  /* A player's live view of a session (/play/<id>): their status on top, then courts, up next and the queue. */
+  .play-grid {
+    @apply grid items-start gap-6 lg:grid-cols-2;
+  }
+  .play-stat {
+    @apply grid gap-0.5 rounded-lg border bg-muted/40 p-3;
+  }
+  .play-stat-value {
+    @apply font-display text-2xl font-bold tabular-nums;
+  }
+  /* Their next match up front on the status card. */
+  .play-next-match {
+    @apply flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3;
+  }
+  /* "You are now playing": a band about 40vh tall with the court, the clock and the matchup centred in it. */
+  .play-now {
+    @apply grid min-h-[40vh] place-content-center justify-items-center gap-5 rounded-2xl border border-primary/40 bg-card p-6 text-center;
+  }
+  .play-now-title {
+    @apply font-display text-3xl font-bold tracking-tight sm:text-4xl;
+  }
+  /* The board's side-vs-side layout (.court-matchup), wider here. */
+  .play-now-matchup {
+    @apply w-full max-w-xl text-left;
+  }
+  /* The live view's queue: only its rows scroll, under the card's header. The cap goes on ScrollArea's viewport,
+     which is sized to its parent and would otherwise grow with the list. */
+  .play-queue-scroll {
+    @apply relative *:data-[slot=scroll-area-viewport]:max-h-[min(55svh,32rem)];
+  }
+  /* A row that's the viewer: their court, their match, their place in the queue. */
+  .play-mine {
+    @apply border-primary bg-primary/10;
+  }
+  /* The club join page (the club QR's link): the club's cover full-bleed, blurred and darkened, the card centred on it. */
+  .join-stage {
+    @apply relative flex min-h-svh flex-col bg-deep-strong text-deep-foreground;
+  }
+  .join-stage-photo {
+    @apply absolute inset-0 size-full scale-110 object-cover blur-sm;
+  }
+  .join-stage-scrim {
+    @apply absolute inset-0 bg-black/55;
+  }
+  .join-card {
+    @apply relative z-10 mx-auto grid w-full max-w-md gap-5 rounded-2xl bg-card p-6 text-card-foreground shadow-2xl sm:p-8;
+  }
   .club-card-grid {
     @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  /* Club cards on Find clubs (DirectoryClubCard): big tiles, at least 20rem wide. */
+  .directory-card-grid {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  }
+  /* A club in the directory: a square card with a white frame, its stage (cover photo, or a gradient from the
+     club's sidebar colour into its accent; set per card by clubThemeStyle) filling it with rounded corners,
+     and its details over a soft blur that rises from the bottom (.directory-card-blur), photo left-aligned. */
+  .directory-card {
+    @apply relative aspect-[8/3] overflow-hidden rounded-[2rem] border-0 bg-transparent shadow-md sm:aspect-[4/3] transition-[box-shadow,transform] duration-(--gp-duration-fast) hover:-translate-y-0.5 hover:shadow-xl;
+  }
+  /* No coloured ring after a click; keyboard focus still shows, as a neutral outline. */
+  .directory-card:has(:focus-visible) {
+    @apply outline-2 outline-offset-2 outline-foreground;
+  }
+  /* No frame: the stage fills the card. Card's own utilities (padding, background, radius, border) beat a class from this
+     layer, so the element overrides them itself (`p-0 bg-transparent rounded-[2rem] border-0`). */
+  .directory-card-stage {
+    @apply relative isolate min-h-0 flex-1 overflow-hidden rounded-[2rem];
+    /* Clipped to its own rounded shape: this also keeps the blur layers from sampling the light page at its edges. */
+    clip-path: inset(0 round 2rem);
+    background: linear-gradient(160deg, var(--club-stage, var(--sidebar)) 45%, color-mix(in oklab, var(--primary) 75%, var(--club-stage, var(--sidebar))));
+  }
+  .directory-card-cover {
+    @apply absolute inset-0 size-full object-cover;
+  }
+  /* Under a cover the stage is plain, so none of the club's colours shows at the photo's edge. */
+  .directory-card-stage:has(.directory-card-cover) {
+    background: var(--deep);
+  }
+  /* The soft blur: blurred backdrop faded in from the top with a mask, darkened toward the bottom so white text reads on any photo or colour. */
+  .directory-card-blur {
+    /* Rounded itself too: a backdrop filter escapes its parent's rounded clipping in Chromium. */
+    @apply pointer-events-none absolute inset-x-0 bottom-0 h-1/2 rounded-b-[2rem] backdrop-blur-xl;
+    background: linear-gradient(to top, var(--scrim) 0%, color-mix(in oklab, var(--scrim) 45%, transparent) 55%, transparent 100%);
+    mask-image: linear-gradient(to top, black 55%, transparent 100%);
+  }
+  /* The same soft blur falling from the top, half the card's height: it frames the card instead of a border. */
+  .directory-card-blur-top {
+    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-[2rem] backdrop-blur-xl;
+    background: linear-gradient(to bottom, color-mix(in oklab, var(--scrim) 45%, transparent) 0%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+  }
+  /* On phones the card is half as tall (8:3): the club and its button share one row. */
+  .directory-card-meta {
+    @apply absolute inset-x-0 bottom-0 flex items-center gap-3 p-4 text-scrim-foreground sm:grid sm:gap-4 sm:p-5;
+  }
+  .directory-card-avatar {
+    @apply shrink-0 shadow-lg;
+  }
+  /* The join button sits above the link that covers the card, so it can be pressed on its own. */
+  .directory-card-action {
+    @apply relative z-10 shrink-0;
+  }
+  /* Buttons without their own text colour (outline: "Manage club") read dark on their light face, not the card's white text. */
+  .directory-card-action [data-slot='button'] {
+    @apply text-foreground;
+  }
+  /* Opening a club (ClubLoadingScreen): its photo and name in its colours, with the logo's arches bobbing in turn. */
+  .club-loading {
+    @apply grid min-h-[60svh] place-items-center content-center gap-5 text-center;
+  }
+  .club-loading-logo {
+    @apply h-8 w-auto text-foreground;
+  }
+  .club-loading-logo [data-logo-arch] {
+    @apply animate-arch-bob;
+    transform-box: fill-box;
+  }
+  .club-loading-logo [data-logo-arch='accent'] {
+    animation-delay: calc(var(--gp-loop-arch-bob) / 2);
   }
   /* The check-in QR: square, as large as the dialog allows. The code draws its own white quiet zone. */
   .check-in-qr {
@@ -485,11 +772,18 @@
   }
   /* The page itself: a light rounded panel on the frame. */
   .app-shell-page {
-    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-xl bg-background shadow-md md:rounded-xl;
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-background shadow-md;
   }
-  /* Phones: the logo and menu button on the frame, above the breadcrumbs. */
+  /* Phones: the logo on the frame, above the breadcrumbs (navigation is the tab bar at the bottom). */
+  /* Phones: menu on the left, the logo centred, the account on the right (three equal columns keep the logo centred). */
   .app-shell-mobile-header {
-    @apply flex items-center gap-2 border-b border-sidebar-border px-4 py-3 md:hidden;
+    @apply grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-sidebar-border px-3 py-2 md:hidden;
+  }
+  .app-shell-mobile-menu {
+    @apply justify-self-start text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+  }
+  .app-shell-mobile-account {
+    @apply grid place-items-center rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-sidebar-ring;
   }
   /* Its header: logo and collapse button in a row, stacked in the rail. */
   .app-sidebar-brand {
@@ -568,6 +862,11 @@
   .photo-aligner-avatar {
     @apply mx-auto size-48 rounded-full;
   }
+  /* A payment QR code's square, on white so the code reads (PhotoAligner, PaymentQrList, the QR settings). */
+  .photo-aligner-square,
+  .qr-frame {
+    @apply relative mx-auto aspect-square w-full max-w-64 overflow-hidden rounded-xl bg-white;
+  }
   /* Club colours (ClubAppearanceCard): preset swatches showing the sidebar with an accent dot. */
   .theme-presets {
     @apply flex flex-wrap gap-2;
@@ -578,8 +877,22 @@
   .theme-preset-picked {
     @apply border-primary ring-1 ring-primary;
   }
+  /* A theme in miniature: the sidebar and the page side by side, the accent as a dot between. */
   .theme-preset-swatch {
-    @apply grid size-7 place-items-center rounded-md *:size-3 *:rounded-full;
+    @apply relative flex size-7 shrink-0 overflow-hidden rounded-md border;
+  }
+  .theme-preset-swatch-half {
+    @apply h-full flex-1;
+  }
+  .theme-preset-swatch-dot {
+    @apply absolute inset-0 m-auto size-3 rounded-full ring-2 ring-white/70;
+  }
+  /* A saved theme: the pick button and its delete button as one chip. */
+  .theme-saved {
+    @apply flex items-center rounded-lg border bg-card text-sm has-[[aria-pressed=true]]:border-primary has-[[aria-pressed=true]]:ring-1 has-[[aria-pressed=true]]:ring-primary;
+  }
+  .theme-saved > .theme-preset {
+    @apply border-0 bg-transparent;
   }
   .theme-color-input {
     @apply h-9 w-14 cursor-pointer rounded-md border bg-card p-1;
@@ -594,3 +907,113 @@
   }
 }
 
+
+@layer components {
+  /* Bottom tab bars on phones (SiteTabBar, AppTabBar): icon over a short label, the page on screen highlighted. */
+  .tab-bar-item {
+    @apply flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-[0.6875rem] leading-tight font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&>span]:max-w-full [&>span]:truncate [&>svg]:size-5 [&>svg]:shrink-0;
+  }
+  .tab-bar-item-active {
+    @apply bg-muted text-foreground [&>svg]:text-primary;
+  }
+  /* Website: a floating liquid-glass bar like the header pill (LiquidGlass), clear of the home indicator. */
+  .site-tab-bar {
+    @apply fixed inset-x-3 z-40 flex items-stretch gap-1 rounded-full p-1.5 md:hidden;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  /* Darker than muted text, so the tabs stay readable through the glass over dark sections. */
+  .site-tab-bar .tab-bar-item {
+    @apply text-foreground/80;
+  }
+  /* App shell: a row on the sidebar-coloured frame under the page panel, styled like the sidebar's links. */
+  .app-tab-bar {
+    @apply flex shrink-0 items-stretch gap-1 px-2 pt-1.5 md:hidden;
+    padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+  }
+  /* Up to three tabs a side of Playing now at 390px: no side padding, tighter letters, so every label fits whole. */
+  .app-tab-bar .tab-bar-item {
+    @apply rounded-lg px-0 text-[0.625rem] tracking-tighter text-sidebar-foreground hover:text-sidebar-accent-foreground focus-visible:ring-sidebar-ring;
+  }
+  .app-tab-bar .tab-bar-item-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground [&>svg]:text-sidebar-primary;
+  }
+  /* With a primary action: the tabs split either side of it, so it stays in the centre whatever is shown. */
+  /* Phones only, like the bar itself: `grid` here would otherwise beat the bar's `md:hidden`. */
+  .app-tab-bar-with-cta {
+    @apply grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:hidden;
+  }
+  .app-tab-bar-side {
+    @apply flex min-w-0 items-stretch gap-0.5;
+  }
+  /* The primary action (Playing now): a pill in the middle of the bar, inside it (nothing overlaps the page panel).
+     Dim while you wait or aren't in a session; lit in the accent and pulsing while you're on court (.tab-bar-cta-live). */
+  .tab-bar-cta {
+    @apply mx-1 flex flex-col items-center justify-center gap-0.5 self-stretch rounded-2xl bg-sidebar-accent px-3.5 py-1.5 text-[0.6875rem] leading-tight font-semibold text-sidebar-foreground transition-[background-color,color,filter] outline-none hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar [&>svg]:size-6;
+  }
+  .tab-bar-cta-live {
+    @apply animate-cta-pulse bg-sidebar-primary text-sidebar-primary-foreground shadow-md hover:text-sidebar-primary-foreground hover:brightness-110;
+  }
+  /* On its own page: a ring around it, in the accent. */
+  .tab-bar-cta-active {
+    @apply text-sidebar-accent-foreground ring-2 ring-sidebar-primary/40 ring-offset-2 ring-offset-sidebar;
+  }
+  .tab-bar-cta-live.tab-bar-cta-active {
+    @apply text-sidebar-primary-foreground;
+  }
+}
+
+@layer components {
+  /* Accounting dashboard: headline figures as tiles. */
+  .accounting-tiles {
+    @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+  .accounting-tile-value {
+    @apply font-display text-2xl font-bold tabular-nums;
+  }
+
+  /* The monthly chart (MonthlyChart): a y-axis column beside the plot, month labels under it.
+     Thin bars with 4px rounded tops on the baseline, 2px apart, recessive grid lines. */
+  .accounting-chart {
+    @apply grid grid-cols-[auto_minmax(0,1fr)] gap-x-2;
+  }
+  .accounting-chart-axis {
+    @apply flex h-56 flex-col justify-between text-right text-xs text-muted-foreground tabular-nums;
+  }
+  .accounting-chart-plot {
+    @apply relative flex h-56 items-end gap-1 border-b border-border;
+  }
+  .accounting-chart-grid {
+    @apply pointer-events-none absolute inset-x-0 border-t border-dashed border-border;
+  }
+  .accounting-chart-month {
+    @apply relative flex h-full min-w-0 flex-1 items-end justify-center gap-[2px] rounded-md outline-none hover:bg-muted/70 focus-visible:ring-[3px] focus-visible:ring-ring/50;
+  }
+  .accounting-chart-month[data-active='true'] {
+    @apply bg-muted/70;
+  }
+  .accounting-chart-bar {
+    @apply w-full max-w-4 min-w-0 rounded-t-[4px];
+  }
+  .accounting-chart-labels {
+    @apply col-start-2 flex gap-1 pt-1.5 text-xs text-muted-foreground;
+  }
+  /* Only some months are labelled, so a label can run into its unlabelled neighbours. */
+  .accounting-chart-labels > span {
+    @apply flex min-w-0 flex-1 justify-center overflow-visible whitespace-nowrap;
+  }
+  /* Inside the plot, at its top, so it never covers the figures above the chart. */
+  .accounting-chart-tooltip {
+    @apply pointer-events-none absolute top-1 z-10 grid min-w-44 -translate-x-1/2 gap-1 rounded-md border bg-popover p-2.5 text-xs text-popover-foreground shadow-md;
+  }
+  /* A legend or tooltip key: a short stroke of the series colour, not a box. */
+  .accounting-chart-key {
+    @apply inline-block h-0.5 w-3 rounded-full;
+  }
+}
+
+@layer components {
+  /* The club dashboard: info beside the sessions and money cards, one column on phones. */
+  .club-dashboard-grid {
+    @apply grid gap-6 xl:grid-cols-2;
+  }
+}

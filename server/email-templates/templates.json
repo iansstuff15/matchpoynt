@@ -1,0 +1,12 @@
+{
+  "_about": "The one email Firebase still sends itself: the notice to the old address after a change of sign-in email, with a link to undo it. Paste the file into Firebase > Authentication > Templates > Email address change (Message, HTML), with this subject and sender name. Every other account email (password reset, email confirmation, the link to a new email, club invites) is sent by the API (server/src/utils/email/), so Firebase's own templates for those are never used. Previews of all of them: pnpm email:templates.",
+  "senderName": "Matchpoynt",
+  "replyTo": "",
+  "templates": [
+    {
+      "file": "email-change.html",
+      "console": "Email address change",
+      "subject": "Your %APP_NAME% sign-in email was changed"
+    }
+  ]
+}

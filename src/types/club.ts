@@ -1,4 +1,7 @@
-import type { clubTabs } from '@/config/club'
+import type { clubPages, clubSettingsGroups } from '@/config/club'
 
-/** A tab of a club's manager page (`/clubs/<id>?tab=…`). */
-export type ClubTab = (typeof clubTabs)[number]
+/** One of a club's pages: its dashboard (`/clubs/<id>`) or `/clubs/<id>/<page>`. */
+export type ClubPage = (typeof clubPages)[number]
+
+/** A group of the club settings dialog. */
+export type ClubSettingsGroup = (typeof clubSettingsGroups)[number]

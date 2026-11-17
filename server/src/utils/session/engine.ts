@@ -22,6 +22,9 @@ export function placedIds(state: SessionState): Set<string> {
 /** Only players who checked in at the venue can be matched or placed on a court. */
 export const isCheckedIn = (player: PlayerState) => player.checkedInAt !== null
 
+/** Players on a break sit out: they aren't matched, placed or auto-filled until they're back. */
+export const isOnBreak = (player: PlayerState) => player.breakSince != null
+
 /**
  * Waiting, checked-in players in call order: lowest rotation first, then
  * longest wait. Placed players, anyone not checked in, and players still in
@@ -31,9 +34,48 @@ export function fairQueue(state: SessionState): PlayerState[] {
   const placed = placedIds(state)
   const held = heldPlayers(state.tournament)
   return activePlayers(state)
-    .filter((p) => p.status === 'waiting' && isCheckedIn(p) && !placed.has(p.id) && !held.has(p.id))
+    .filter((p) => p.status === 'waiting' && isCheckedIn(p) && !isOnBreak(p) && !placed.has(p.id) && !held.has(p.id))
     .sort((a, b) => a.rotation - b.rotation || a.queuedAt - b.queuedAt)
 }
+
+/** Checked-in players taking a break, longest first. */
+export function onBreak(state: SessionState): PlayerState[] {
+  return activePlayers(state)
+    .filter((p) => isCheckedIn(p) && isOnBreak(p))
+    .sort((a, b) => a.breakSince! - b.breakSince!)
+}
+
+/**
+ * Why `playerId` can't start (`on`) or end a break now, or `null` when they
+ * can. Only checked-in players off court take one, and never while they're
+ * still in the tournament (the bracket would wait on them).
+ */
+export function breakBlockedReason(state: SessionState, playerId: string, on: boolean): string | null {
+  if (state.status !== 'active') return 'This session has ended.'
+  const player = state.players[playerId]
+  if (!player?.active) return 'That player is not in this session.'
+  if (!on) return isOnBreak(player) ? null : `${player.name} isn't on a break.`
+  if (isOnBreak(player)) return `${player.name} is already on a break.`
+  if (!isCheckedIn(player)) return `${player.name} hasn't checked in yet.`
+  if (player.status === 'playing') return `${player.name} is on court. A break can start once their match ends.`
+  if (heldPlayers(state.tournament).has(playerId)) return `${player.name} is still in the tournament, so they can't take a break until they're knocked out or it finishes.`
+  return null
+}
+
+/**
+ * Starts or ends a player's break. Starting takes them off any court they
+ * were placed on; coming back puts them in the queue from now, keeping
+ * their place in the rotation, and auto-fill may pick them straight away.
+ */
+export function setPlayerBreak(state: SessionState, playerId: string, on: boolean, ctx: EngineContext): SessionState {
+  const blocked = breakBlockedReason(state, playerId, on)
+  if (blocked) throw state.players[playerId]?.active ? conflict(blocked) : notFound(blocked)
+  const player = state.players[playerId]!
+  const changed: PlayerState = on ? { ...player, breakSince: ctx.now } : { ...player, breakSince: null, queuedAt: ctx.now }
+  const next = { ...state, players: { ...state.players, [playerId]: changed } }
+  return autoFill(on ? withoutPlacement(next, playerId) : next, ctx)
+}
+
 
 /** On the roster but not at the venue yet, by name. */
 export function awaitingCheckIn(state: SessionState): PlayerState[] {
@@ -168,6 +210,7 @@ export function assignPlayer(state: SessionState, courtId: string, playerId: str
   if (!player?.active) throw notFound('That player is not in this session.')
   if (player.status === 'playing') throw conflict(`${player.name} is on court. Finish their match first.`)
   if (!isCheckedIn(player)) throw conflict(`${player.name} hasn't checked in yet. Check them in first.`)
+  if (isOnBreak(player)) throw conflict(`${player.name} is on a break. End their break first.`)
   if (heldPlayers(state.tournament).has(playerId)) {
     throw conflict(`${player.name} is in the tournament, so they stay out of open play until they're knocked out.`)
   }
@@ -198,7 +241,7 @@ export function tidyLineups(state: SessionState): SessionState {
     ids
       .filter((id) => {
         const p = state.players[id]
-        return p?.active && p.status === 'waiting' && isCheckedIn(p) && !held.has(id)
+        return p?.active && p.status === 'waiting' && isCheckedIn(p) && !isOnBreak(p) && !held.has(id)
       })
       .slice(0, perSide)
   return { ...state, courts: state.courts.map((c) => ({ ...c, lineup: [keep(c.lineup[0]), keep(c.lineup[1])] })) }

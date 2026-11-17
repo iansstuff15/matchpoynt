@@ -18,7 +18,15 @@ describe('createSession', () => {
   it('rejects an invalid setup with errors per step', () => {
     expect(() => readySession(setupInput({ courts: [] }), testContext())).toThrow('Add at least one court.')
     try {
-      readySession(setupInput({ courts: [{ id: '1', label: 'A' }, { id: '2', label: 'a' }] }), testContext())
+      readySession(
+        setupInput({
+          courts: [
+            { id: '1', label: 'A' },
+            { id: '2', label: 'a' },
+          ],
+        }),
+        testContext(),
+      )
     } catch (e) {
       expect((e as { fields: object }).fields).toMatchObject({ courts: 'Court names must be different.' })
     }
@@ -34,8 +42,20 @@ describe('queue and matches', () => {
     expect(names(s, match.sides[0]) + '|' + names(s, match.sides[1])).toBe('AnaCy|BenDee')
 
     ctx.tick()
-    s = finishMatch(s, court(s, 0), [{ a: 21, b: 15 }, { a: 21, b: 18 }], ctx)
-    expect(fairQueue(s).map((p) => p.name).join(',')).toBe('Eli,Fay,Gus,Hal,Ana,Ben,Cy,Dee')
+    s = finishMatch(
+      s,
+      court(s, 0),
+      [
+        { a: 21, b: 15 },
+        { a: 21, b: 18 },
+      ],
+      ctx,
+    )
+    expect(
+      fairQueue(s)
+        .map((p) => p.name)
+        .join(','),
+    ).toBe('Eli,Fay,Gus,Hal,Ana,Ben,Cy,Dee')
     expect(s.matches[match.id]!.winner).toBe('a')
     expect(s.players[match.sides[0][0]!]!.gamesPlayed).toBe(1)
   })
@@ -110,7 +130,10 @@ describe('applySetup', () => {
     s = applySetup(
       s,
       setupInput({
-        courts: [{ id: view.courts[0]!.id, label: 'Centre' }, { id: 'brand-new', label: 'Court 9' }],
+        courts: [
+          { id: view.courts[0]!.id, label: 'Centre' },
+          { id: 'brand-new', label: 'Court 9' },
+        ],
         members: [...view.players.filter((p) => p.id !== onCourt && p.name !== 'Hal'), { id: 'x', name: 'Ivy', tierId: 'open' }],
       }),
       ctx,
@@ -126,9 +149,7 @@ describe('applySetup', () => {
   it('does not allow switching sport', () => {
     const ctx = testContext()
     const s = readySession(setupInput(), ctx)
-    expect(() => applySetup(s, setupInput({ sportId: 'tennis', scoring: { formatId: 'fast4', matchFormat: 'doubles' } }), ctx)).toThrow(
-      'one sport',
-    )
+    expect(() => applySetup(s, setupInput({ sportId: 'tennis', scoring: { formatId: 'fast4', matchFormat: 'doubles' } }), ctx)).toThrow('one sport')
   })
 })
 

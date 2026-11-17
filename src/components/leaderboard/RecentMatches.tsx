@@ -5,24 +5,26 @@ import { cn } from '@/utils/cn'
 
 interface RecentMatchesProps {
   matches: MatchResult[]
+  /** "Recent results" by default; the players' live view calls it its match history. */
+  title?: string
 }
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 /** Latest finished matches with their game scores. */
-export default function RecentMatches({ matches }: RecentMatchesProps) {
+export default function RecentMatches({ matches, title = 'Recent results' }: RecentMatchesProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Recent results</CardTitle>
+        <CardTitle className="font-display">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {matches.length === 0 ? (
           <p className="text-sm text-muted-foreground">Finished matches show up here.</p>
         ) : (
-          <ol className="divide-y">
+          <ol className="divide-y" aria-label={title}>
             {matches.map((m) => (
-              <li key={m.id} className="grid gap-1 py-3 text-sm">
+              <li key={m.id} data-play-row className="grid gap-1 py-3 text-sm">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{m.courtLabel}</span>
                   <time dateTime={m.finishedAt}>{time(m.finishedAt)}</time>

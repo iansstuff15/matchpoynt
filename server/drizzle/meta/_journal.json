@@ -162,6 +162,202 @@
       "when": 1794318805052,
       "tag": "0022_firebase_account_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794325925263,
+      "tag": "0023_fees",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794325928691,
+      "tag": "0024_fee_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794326906419,
+      "tag": "0025_saved_themes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794341012402,
+      "tag": "0026_accounting",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794342113500,
+      "tag": "0027_manual_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794342114052,
+      "tag": "0028_manual_invoice_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794344252356,
+      "tag": "0029_handles_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794344253289,
+      "tag": "0030_handle_profile_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794345849486,
+      "tag": "0031_directory",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794345850425,
+      "tag": "0032_directory_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794345963125,
+      "tag": "0033_join_request_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794772764008,
+      "tag": "0034_roles_feedback_friends",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794772786625,
+      "tag": "0035_roles_feedback_friends_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794774225761,
+      "tag": "0036_username_sign_in_club_card_theme",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794780457202,
+      "tag": "0037_club_on_leaderboards",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794782776989,
+      "tag": "0038_club_badges_in_player_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794840987863,
+      "tag": "0039_player_check_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794859992715,
+      "tag": "0040_worried_hercules",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794859997015,
+      "tag": "0041_payments_and_qrs",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794860835910,
+      "tag": "0042_member_clubs",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794862470364,
+      "tag": "0043_owned_clubs_in_picker",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794938593460,
+      "tag": "0044_person_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794939002792,
+      "tag": "0045_youthful_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794939006421,
+      "tag": "0046_club_announcements_for",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794939371361,
+      "tag": "0047_hesitant_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794939376770,
+      "tag": "0048_player_breaks",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794940384176,
+      "tag": "0049_odd_sue_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794940404551,
+      "tag": "0050_plan_sign_up",
+      "breakpoints": true
     }
   ]
 }

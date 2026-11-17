@@ -1,12 +1,14 @@
 import { importPKCS8, SignJWT } from 'jose'
 import { firebaseEndpoints } from '@/config/auth'
 import { env } from '@/config/env'
+import { oobCodeOf } from '@/utils/auth/actionLinks'
 import { FirebaseError } from '@/utils/firebase/errors'
 import { unavailable } from '@/utils/http/errors'
 
-// Two admin calls, made with the Firebase service account: giving an account
-// the `role: authenticated` claim Supabase needs, and checking an email has an
-// account. A Google access token is minted from the key and reused until it expires.
+// Admin calls, made with the Firebase service account: giving an account the
+// `role: authenticated` claim Supabase needs, finding the account an email
+// belongs to, linking Google to an existing account with the same email, and
+// making the codes for emailed links (the API sends the emails itself). A Google access token is minted from the key and reused until it expires.
 
 let cached: { token: string; expiresAt: number } | undefined
 
@@ -66,8 +68,50 @@ export async function grantDatabaseRole(uid: string): Promise<void> {
   await admin('update', { localId: uid, customAttributes: JSON.stringify({ role: 'authenticated' }) })
 }
 
-/** Whether an email has an account, so sign-in links go only to existing accounts. */
-export async function hasAccount(email: string): Promise<boolean> {
-  const answer = await admin<{ users?: unknown[] }>('lookup', { email: [email] })
-  return (answer.users?.length ?? 0) > 0
+
+/** The account an email belongs to, or `null` when it has none. */
+export async function accountIdByEmail(email: string): Promise<string | null> {
+  const answer = await admin<{ users?: { localId: string }[] }>('lookup', { email: [email] })
+  return answer.users?.[0]?.localId ?? null
+}
+
+/** The email an account signs in with, or `null` when it has none (or no such account). */
+export async function emailOfAccount(uid: string): Promise<string | null> {
+  const answer = await admin<{ users?: { email?: string }[] }>('lookup', { localId: [uid] })
+  return answer.users?.[0]?.email ?? null
+}
+
+/**
+ * Links a sign-in provider (Google) to the account that already has its email,
+ * so the person keeps one account. Only for emails the provider has confirmed.
+ */
+export async function linkProviderToEmail(
+  email: string,
+  info: { providerId: string; rawId: string; email: string; displayName?: string; photoUrl?: string },
+): Promise<void> {
+  const localId = await accountIdByEmail(email)
+  if (!localId) throw new FirebaseError('USER_NOT_FOUND', 404)
+  await admin('update', { localId, linkProviderUserInfo: info })
+}
+
+/** The kinds of emailed link Firebase makes codes for. */
+export type ActionCodeRequest = 'PASSWORD_RESET' | 'VERIFY_EMAIL' | 'EMAIL_SIGNIN' | 'VERIFY_AND_CHANGE_EMAIL'
+
+/**
+ * A one-time code for an emailed link, made by Firebase without it sending
+ * anything (`returnOobLink`): the API sends the email itself, with its own
+ * link around the code. `newEmail` is where a change of email goes.
+ */
+export async function actionCode(requestType: ActionCodeRequest, email: string, continueUrl: string, newEmail?: string): Promise<string> {
+  const answer = await admin<{ oobLink?: string }>('sendOobCode', {
+    requestType,
+    email,
+    ...(newEmail && { newEmail }),
+    continueUrl,
+    canHandleCodeInApp: requestType === 'EMAIL_SIGNIN',
+    returnOobLink: true,
+  })
+  const code = oobCodeOf(answer.oobLink)
+  if (!code) throw unavailable("Firebase didn't give the API a link code for the email. Check the service account can manage users.")
+  return code
 }

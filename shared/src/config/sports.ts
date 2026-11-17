@@ -1,4 +1,4 @@
-import type { SportRules } from '../interfaces/SportRules.ts'
+import type { ScoringFormat, SportRules } from '../interfaces/SportRules.ts'
 import type { SportId } from '../types/sport.ts'
 
 const rally = (id: string, label: string, pointsToWin: number, cap: number | undefined, bestOf: number) => ({
@@ -10,6 +10,20 @@ const rally = (id: string, label: string, pointsToWin: number, cap: number | und
   cap,
   bestOf,
 })
+
+/**
+ * One game raced to a ceiling, a choice of ceilings as a group of formats
+ * (`race-<n>`): the first side to the ceiling wins, with no deuce.
+ */
+const raceTo = (caps: number[]): ScoringFormat[] =>
+  caps.map((cap) => ({
+    ...rally(`race-${cap}`, `Race to ${cap}`, cap, cap, 1),
+    winBy: 1,
+    group: 'Race to the ceiling',
+    groupDescription: 'One game. The first side to reach the ceiling wins, with no deuce.',
+    variant: `Race to ${cap}`,
+    formats: ['singles', 'doubles'],
+  }))
 
 /** Scoring, tiers and terminology for every sport. The API validates against these. */
 export const sportRules: Record<SportId, SportRules> = {
@@ -23,6 +37,7 @@ export const sportRules: Record<SportId, SportRules> = {
       { ...rally('bwf-21', '21 points, best of 3', 21, 30, 3), formats: ['singles', 'doubles'] },
       { ...rally('single-21', '21 points, one game', 21, 30, 1), formats: ['singles', 'doubles'] },
       { ...rally('single-15', '15 points, one game', 15, 21, 1), formats: ['singles', 'doubles'] },
+      ...raceTo([30, 31, 35]),
     ],
     tiers: [
       { id: 'beginner', label: 'Beginner' },

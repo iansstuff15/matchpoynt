@@ -1,6 +1,7 @@
 import { firebaseEndpoints } from '@/config/auth'
 import { env } from '@/config/env'
 import type { AuthTokens } from '@/interfaces/AuthUser'
+import { linkProviderToEmail } from '@/utils/firebase/admin'
 import { FirebaseError } from '@/utils/firebase/errors'
 import { unavailable } from '@/utils/http/errors'
 
@@ -63,21 +64,8 @@ export async function refreshTokens(refreshToken: string): Promise<AuthTokens> {
   return tokensOf({ idToken: answer.id_token, refreshToken: answer.refresh_token })
 }
 
-/** Emails a sign-in link. Opening it lands on `continueUrl` (the API's `/auth/action`). Creates the account if there is none. */
-export async function sendSignInLink(email: string, continueUrl: string): Promise<void> {
-  await call('sendOobCode', { requestType: 'EMAIL_SIGNIN', email, continueUrl, canHandleCodeInApp: true })
-}
-
 export async function signInWithEmailLink(email: string, oobCode: string): Promise<AuthTokens> {
   return tokensOf(await call<TokenAnswer>('signInWithEmailLink', { email, oobCode }))
-}
-
-export async function sendPasswordReset(email: string, continueUrl: string): Promise<void> {
-  await call('sendOobCode', { requestType: 'PASSWORD_RESET', email, continueUrl })
-}
-
-export async function sendEmailVerification(idToken: string, continueUrl: string): Promise<void> {
-  await call('sendOobCode', { requestType: 'VERIFY_EMAIL', idToken, continueUrl })
 }
 
 /** Checks a reset code without using it, and says whose account it's for. */
@@ -93,6 +81,17 @@ export async function resetPassword(oobCode: string, newPassword: string): Promi
 /** Applies an email-confirmation code. */
 export async function confirmEmail(oobCode: string): Promise<void> {
   await call('update', { oobCode })
+}
+
+/** Uses an emailed link's code (email confirmation, a change of email, or undoing one) and says which email the account now has. */
+export async function applyEmailCode(oobCode: string): Promise<string | null> {
+  return (await call<{ email?: string }>('update', { oobCode })).email ?? null
+}
+
+/** What an emailed link's code is for, without using it: its kind, the account's email and, for a change, the new one. */
+export async function checkActionCode(oobCode: string): Promise<{ requestType: string | null; email: string | null; newEmail: string | null }> {
+  const info = await call<{ requestType?: string; email?: string; newEmail?: string }>('resetPassword', { oobCode })
+  return { requestType: info.requestType ?? null, email: info.email ?? null, newEmail: info.newEmail ?? null }
 }
 
 /** Sets or changes the signed-in account's password. Firebase answers with fresh tokens. */
@@ -112,15 +111,61 @@ export async function startProviderSignIn(providerId: string, continueUri: strin
   return { authUri: answer.authUri, sessionId: answer.sessionId }
 }
 
-/** Finishes a Google/Apple sign-in from the URL the provider returned to. */
-export async function finishProviderSignIn(requestUri: string, sessionId: string): Promise<AuthTokens> {
-  const answer = await call<TokenAnswer & { needConfirmation?: boolean; errorMessage?: string }>('signInWithIdp', {
-    requestUri,
-    sessionId,
+interface IdpAnswer extends TokenAnswer {
+  needConfirmation?: boolean
+  errorMessage?: string
+  email?: string
+  emailVerified?: boolean
+  providerId?: string
+  displayName?: string
+  photoUrl?: string
+  federatedId?: string
+  rawUserInfo?: string
+  oauthIdToken?: string
+  oauthAccessToken?: string
+}
+
+/** A finished provider sign-in, and the photo on the provider's account (Google's), if any. */
+export interface ProviderSignIn {
+  tokens: AuthTokens
+  photoUrl: string | null
+}
+
+/** The provider's own id for the person (Google's `sub`), from the answer. */
+function providerUserId(answer: IdpAnswer): string | null {
+  try {
+    const raw = JSON.parse(answer.rawUserInfo ?? '{}') as { sub?: string; id?: string }
+    if (raw.sub ?? raw.id) return String(raw.sub ?? raw.id)
+  } catch {
+    // Fall back to the federated id below.
+  }
+  return answer.federatedId?.split('/').pop() || null
+}
+
+/**
+ * Finishes a Google/Apple sign-in from the URL the provider returned to.
+ * When the email already has an account (e.g. made with a password) and
+ * Google has confirmed the person owns that email, Google is linked to that
+ * account and the sign-in goes through as it: one person, one account. Any
+ * other clash is refused (`NEEDS_CONFIRMATION`).
+ */
+export async function finishProviderSignIn(requestUri: string, sessionId: string, continueUri: string): Promise<ProviderSignIn> {
+  const answer = await call<IdpAnswer>('signInWithIdp', { requestUri, sessionId, returnSecureToken: true, returnIdpCredential: true })
+  if (answer.errorMessage) throw new FirebaseError(answer.errorMessage, 400)
+  if (!answer.needConfirmation) return { tokens: tokensOf(answer), photoUrl: answer.photoUrl ?? null }
+
+  const rawId = providerUserId(answer)
+  const credential = answer.oauthIdToken ? `id_token=${answer.oauthIdToken}` : answer.oauthAccessToken ? `access_token=${answer.oauthAccessToken}` : null
+  if (answer.providerId !== 'google.com' || !answer.emailVerified || !answer.email || !rawId || !credential) throw new FirebaseError('NEEDS_CONFIRMATION', 409)
+  await linkProviderToEmail(answer.email, { providerId: answer.providerId, rawId, email: answer.email, displayName: answer.displayName, photoUrl: answer.photoUrl })
+  // Signed in again with the same Google credential: now it belongs to the existing account.
+  const linked = await call<IdpAnswer>('signInWithIdp', {
+    requestUri: continueUri,
+    postBody: `${credential}&providerId=${answer.providerId}`,
     returnSecureToken: true,
     returnIdpCredential: true,
   })
-  if (answer.errorMessage) throw new FirebaseError(answer.errorMessage, 400)
-  if (answer.needConfirmation) throw new FirebaseError('NEEDS_CONFIRMATION', 409)
-  return tokensOf(answer)
+  if (linked.errorMessage) throw new FirebaseError(linked.errorMessage, 400)
+  if (linked.needConfirmation) throw new FirebaseError('NEEDS_CONFIRMATION', 409)
+  return { tokens: tokensOf(linked), photoUrl: linked.photoUrl ?? answer.photoUrl ?? null }
 }

@@ -1,5 +1,5 @@
 import type { ClubSummary } from '@matchpoynt/shared'
-import { Check, ChevronsUpDown, LayoutGrid, Pencil, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, Compass, LayoutGrid, Pencil, Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import ClubAvatar from '@/components/club/ClubAvatar'
 import {
@@ -17,14 +17,17 @@ interface ClubSwitcherProps {
   clubs: ClubSummary[]
   /** The club on screen, or the one opened last. */
   currentId: string | null
+  /** Offer the full-screen club picker, to find clubs to join (while the directory is on). */
+  findClubs?: boolean
 }
 
 /**
  * Switches clubs like switching profiles: the current club's round avatar
  * (all that shows in the sidebar's icon rail), then every club's avatar and
- * name, "Add club", "Edit clubs" and the picker.
+ * name, "Add club", "Edit clubs", the picker and, with the directory on,
+ * "Find clubs" (the full-screen club picker).
  */
-export default function ClubSwitcher({ clubs, currentId }: ClubSwitcherProps) {
+export default function ClubSwitcher({ clubs, currentId, findClubs = false }: ClubSwitcherProps) {
   const current = clubs.find((c) => c.id === currentId)
 
   return (
@@ -85,6 +88,14 @@ export default function ClubSwitcher({ clubs, currentId }: ClubSwitcherProps) {
             All clubs
           </Link>
         </DropdownMenuItem>
+        {findClubs && (
+          <DropdownMenuItem asChild>
+            <Link to="/choose-club">
+              <Compass aria-hidden />
+              Find clubs
+            </Link>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

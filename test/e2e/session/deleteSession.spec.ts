@@ -33,12 +33,13 @@ test.describe('deleting a session', () => {
     await page.getByRole('button', { name: 'Delete session' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete session' }).click()
     await pageReady(page)
-    // The other session's board opens.
-    await expect(page).toHaveURL(/\/app\/[0-9a-f-]{36}$/)
+    // Back on the session board, which lists the other one, still running.
+    await expect(page).toHaveURL('/app')
+    await expect(page.getByRole('list', { name: 'Running sessions' }).getByRole('listitem')).toHaveCount(1)
     await expect(page.locator('#main').getByText('1 running')).toBeVisible()
   })
 
-  test('a finished session is deleted from its page, and from Past sessions', async ({ page }) => {
+  test('a finished session is deleted from its page, and from the session board', async ({ page }) => {
     const players = ['Ana', 'Ben', 'Cy', 'Dee']
     await setUpSession(page, { players })
     await checkIn(page, players)
@@ -54,8 +55,8 @@ test.describe('deleting a session', () => {
     await setUpSession(page, { players: ['Eve'] })
     await finishSession(page)
 
-    await gotoReady(page, '/app/past')
-    const cards = page.getByRole('list', { name: 'Finished sessions' }).getByRole('listitem')
+    await gotoReady(page, '/app')
+    const cards = page.getByRole('list', { name: 'Previous sessions' }).getByRole('listitem')
     await expect(cards).toHaveCount(2)
     await cards.nth(0).getByRole('button', { name: /^Delete / }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete session' }).click()
@@ -68,8 +69,8 @@ test.describe('deleting a session', () => {
     await expect(page.getByText('These are the final standings.')).toBeVisible()
     await page.getByRole('button', { name: 'Delete session' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete session' }).click()
-    await expect(page).toHaveURL('/app/past')
+    await expect(page).toHaveURL('/app')
     await pageReady(page)
-    await expect(page.getByText('No finished sessions yet')).toBeVisible()
+    await expect(page.getByText('No session yet')).toBeVisible()
   })
 })

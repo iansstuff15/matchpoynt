@@ -1,6 +1,8 @@
-import { clubLimits, type ClubMemberInput, type MemberTier, type SportId } from '@matchpoynt/shared'
+import { clubLimits, clubMemberRoles, type ClubMemberInput, type ClubMemberRole, type MemberTier, type PersonCard, type SportId } from '@matchpoynt/shared'
 import { Check, LoaderCircle, UserPlus } from 'lucide-react'
 import { useId, useState } from 'react'
+import PersonSearchField from '@/components/club/PersonSearchField'
+import PersonRow from '@/components/common/PersonRow'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -11,6 +13,8 @@ import { sportList } from '@/config/sports'
 
 interface MemberDialogProps {
   open: boolean
+  /** The club: its members aren't suggested when adding. */
+  clubId: string
   /** `null` adds a new member. */
   initial: ClubMemberInput | null
   pending: boolean
@@ -22,10 +26,13 @@ interface MemberDialogProps {
 const notPlaying = 'none'
 
 /** Draft state lives here, so it resets each time the dialog opens. */
-function MemberForm({ initial, pending, error, onSubmit, onCancel }: Omit<MemberDialogProps, 'open' | 'onOpenChange'> & { onCancel: () => void }) {
-  const [member, setMember] = useState<ClubMemberInput>(initial ?? { name: '', contact: null, tiers: [] })
+function MemberForm({ clubId, initial, pending, error, onSubmit, onCancel }: Omit<MemberDialogProps, 'open' | 'onOpenChange'> & { onCancel: () => void }) {
+  const [member, setMember] = useState<ClubMemberInput>(initial ?? { name: '', contact: null, tiers: [], userId: null, role: 'member' })
+  // Picked from the search: who they are on Matchpoynt (they're invited in the app).
+  const [picked, setPicked] = useState<PersonCard | null>(null)
   const nameId = useId()
   const contactId = useId()
+  const roleId = useId()
   const tierOf = (sportId: SportId) => member.tiers.find((t) => t.sportId === sportId)?.tierId ?? notPlaying
   const setTier = (sportId: SportId, tierId: string) => {
     const others = member.tiers.filter((t) => t.sportId !== sportId)
@@ -47,7 +54,23 @@ function MemberForm({ initial, pending, error, onSubmit, onCancel }: Omit<Member
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor={nameId}>Name</Label>
-          <Input id={nameId} value={member.name} maxLength={60} autoComplete="off" onChange={(e) => setMember({ ...member, name: e.target.value })} />
+          {adding ? (
+            <PersonSearchField
+              id={nameId}
+              value={member.name}
+              clubId={clubId}
+              onChange={(name) => {
+                setPicked(null)
+                setMember({ ...member, name, userId: null })
+              }}
+              onPick={(person) => {
+                setPicked(person)
+                setMember({ ...member, name: person.username ?? person.displayName ?? member.name, contact: person.email ?? member.contact, userId: person.userId })
+              }}
+            />
+          ) : (
+            <Input id={nameId} value={member.name} maxLength={60} autoComplete="off" onChange={(e) => setMember({ ...member, name: e.target.value })} />
+          )}
         </div>
         <div className="grid gap-2">
           <Label htmlFor={contactId}>Contact (optional)</Label>
@@ -61,6 +84,39 @@ function MemberForm({ initial, pending, error, onSubmit, onCancel }: Omit<Member
           />
         </div>
       </div>
+      <div className="grid gap-2">
+        <Label htmlFor={roleId}>Role in the club</Label>
+        <Select value={member.role ?? 'member'} onValueChange={(role) => setMember({ ...member, role: role as ClubMemberRole })}>
+          <SelectTrigger id={roleId} className="w-full sm:w-64">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(clubMemberRoles) as [ClubMemberRole, (typeof clubMemberRoles)[ClubMemberRole]][]).map(([id, role]) => (
+              <SelectItem key={id} value={id}>
+                {role.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">{clubMemberRoles[member.role ?? 'member'].description} Players see everyone other than members as the club's team.</p>
+      </div>
+      {picked && (
+        <div role="status" className="flex items-center gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
+          <PersonRow name={picked.displayName ?? picked.username ?? member.name} username={picked.username} email={picked.email} avatarUrl={picked.avatarUrl} avatarPosition={picked.avatarPosition} />
+          <span className="text-muted-foreground">gets an invite in the app to link their account.</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPicked(null)
+              setMember({ ...member, userId: null })
+            }}
+          >
+            Don't invite
+          </Button>
+        </div>
+      )}
       <fieldset className="grid gap-2">
         <legend className="mb-2 text-sm font-medium">Skill tier by sport</legend>
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -101,7 +157,7 @@ function MemberForm({ initial, pending, error, onSubmit, onCancel }: Omit<Member
   )
 }
 
-/** Adds a club member or edits one: name, contact and a tier per sport. */
+/** Adds a club member or edits one: name, contact, role and a tier per sport. */
 export default function MemberDialog({ open, onOpenChange, initial, ...formProps }: MemberDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

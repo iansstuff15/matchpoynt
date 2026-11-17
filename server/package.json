@@ -1,6 +1,6 @@
 {
   "name": "@matchpoynt/server",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Matchpoynt API: the only place that talks to Supabase and runs business logic.",
   "type": "module",

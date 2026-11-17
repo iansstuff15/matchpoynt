@@ -1,11 +1,12 @@
 import type { ProfileInput, ProfileView } from '@matchpoynt/shared'
 import { describe, expect, it } from 'vitest'
-import { missingFields, passwordProblem, suggestedFromUser, validateProfile } from '@/utils/profile/rules'
+import { manageClubsBlockedReason, missingFields, passwordProblem, suggestedFromUser, validateProfile } from '@/utils/profile/rules'
 
 const input = (o: Partial<ProfileInput> = {}): ProfileInput => ({
   firstName: 'Ana',
   lastName: 'Reyes',
   displayName: 'Ana R',
+  username: 'ana.reyes',
   phone: '+63 917 555 0101',
   city: 'Manila',
   role: 'both',
@@ -20,7 +21,9 @@ describe('validateProfile', () => {
   })
   it.each([
     [{ firstName: ' ' }, 'profile', 'first and last name'],
-    [{ displayName: 'A' }, 'profile', '2 to 30 characters'],
+    [{ username: '' }, 'profile', 'Pick a username'],
+    [{ username: 'a!' }, 'profile', '3 to 30 characters'],
+    [{ username: '.ana' }, 'profile', 'start and end with a letter or number'],
     [{ phone: 'call me' }, 'profile', "phone number has characters"],
     [{ sports: [] }, 'sports', 'at least one sport'],
     [{ sports: [{ sportId: 'badminton', tierId: '3.5' }] }, 'sports', 'badminton skill tier'],
@@ -40,22 +43,35 @@ describe('passwordProblem', () => {
 })
 
 describe('missingFields', () => {
-  const empty: ProfileView = { firstName: null, lastName: null, displayName: null, phone: null, city: null, role: null, termsAcceptedAt: null, sports: [] }
+  const empty: ProfileView = { firstName: null, lastName: null, displayName: null, username: null, phone: null, city: null, role: null, termsAcceptedAt: null, sports: [] }
   it('lists every required field that is empty, ignoring optional ones', () => {
-    expect(missingFields(empty)).toEqual(['firstName', 'lastName', 'displayName', 'role', 'terms', 'sports'])
+    // The display name is the username, so only the username is asked for.
+    expect(missingFields(empty)).toEqual(['firstName', 'lastName', 'username', 'role', 'terms', 'sports'])
     expect(
-      missingFields({ ...empty, firstName: 'A', lastName: 'B', displayName: 'AB', role: 'player', termsAcceptedAt: 'x', sports: [{ sportId: 'padel', tierId: '3' }] }),
+      missingFields({ ...empty, firstName: 'A', lastName: 'B', displayName: 'AB', username: 'ab1', role: 'player', termsAcceptedAt: 'x', sports: [{ sportId: 'padel', tierId: '3' }] }),
     ).toEqual([])
   })
 })
 
 describe('provider data', () => {
   it('suggests names from the name on a Google sign-in', () => {
-    expect(suggestedFromUser({ name: 'Ana Maria Reyes' })).toEqual({ firstName: 'Ana', lastName: 'Maria Reyes', displayName: 'Ana' })
-    expect(suggestedFromUser({ name: '  Ana   Reyes ' })).toEqual({ firstName: 'Ana', lastName: 'Reyes', displayName: 'Ana' })
+    expect(suggestedFromUser({ name: 'Ana Maria Reyes' })).toEqual({ firstName: 'Ana', lastName: 'Maria Reyes', username: 'anamariareyes' })
+    expect(suggestedFromUser({ name: '  Ana   Reyes ' })).toEqual({ firstName: 'Ana', lastName: 'Reyes', username: 'anareyes' })
   })
   it('suggests nothing without a name', () => {
     expect(suggestedFromUser({ name: null })).toEqual({})
     expect(suggestedFromUser({ name: '   ' })).toEqual({})
+  })
+})
+
+describe('manageClubsBlockedReason', () => {
+  it('keeps player-only accounts out of club management, with how to change it', () => {
+    expect(manageClubsBlockedReason('player', false)).toMatch(/Queue Master/)
+    expect(manageClubsBlockedReason('queue_master', false)).toBeNull()
+    expect(manageClubsBlockedReason('both', false)).toBeNull()
+  })
+  it('lets guests and unfinished profiles through (they are sent to finish it first)', () => {
+    expect(manageClubsBlockedReason('player', true)).toBeNull()
+    expect(manageClubsBlockedReason(null, false)).toBeNull()
   })
 })

@@ -1,4 +1,4 @@
-import type { MeResponse } from '@matchpoynt/shared'
+import type { AccountLookupResponse, MeResponse } from '@matchpoynt/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/utils/api/client'
 import { queryKeys } from '@/utils/api/queryClient'
@@ -22,8 +22,14 @@ export function useSignOut() {
   })
 }
 
-export function useEmailSignIn() {
-  return useMutation({
-    mutationFn: (input: { email: string; next?: string }) => api<void>('POST', '/auth/email', { body: input }),
+
+/** Who an email belongs to (photo, name, @username), for the sign-in form's password step. `null` for an unknown email. */
+export function useAccountLookup(email: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.accountLookup(email.trim().toLowerCase()),
+    queryFn: async ({ signal }) => (await api<AccountLookupResponse>('POST', '/auth/lookup', { body: { email: email.trim() }, signal })).account,
+    enabled: enabled && email.trim().length > 0,
+    staleTime: 60_000,
+    retry: false,
   })
 }

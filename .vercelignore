@@ -1,0 +1,41 @@
+# What `vercel deploy` uploads: the source Vercel builds the `app` and `server` services from.
+# Vercel installs and builds remotely, so nothing built or installed locally goes up.
+
+# Dependencies and builds
+node_modules
+**/node_modules
+dist
+**/dist
+*.tsbuildinfo
+
+# Secrets are Vercel environment variables, never uploaded files
+.env
+.env.*
+/env
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Desktop app is built in CI, not on Vercel
+src-tauri/
+
+# Test runs (test/ itself stays: it is a workspace package the lockfile installs)
+test/.output/
+.output/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# Docker delivery path, logs and local tooling
+docker/
+docker-compose*.yml
+logs
+*.log
+.git
+.github
+.claude
+.vscode
+.idea
+.DS_Store

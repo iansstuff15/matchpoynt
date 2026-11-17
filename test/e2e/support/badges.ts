@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { openClubTab } from './club'
+import { openClubPage } from './club'
 import type { TestFile } from './images'
 import { pageReady } from './pageReady'
 
@@ -29,7 +29,7 @@ async function setConditions(page: Page, conditions: NewBadge['conditions']) {
 
 /** Creates a badge from the club's Badges tab and waits for its card. */
 export async function createBadge(page: Page, badge: NewBadge) {
-  await openClubTab(page, 'Badges')
+  await openClubPage(page, 'Badges')
   await page.getByRole('button', { name: 'New badge' }).click()
   const dialog = badgeDialog(page)
   await expect(dialog).toBeVisible()

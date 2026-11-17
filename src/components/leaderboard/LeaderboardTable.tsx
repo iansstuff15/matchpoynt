@@ -1,4 +1,4 @@
-import type { ClubBadgeView, LeaderboardEntry } from '@matchpoynt/shared'
+import type { ClubBadgeView, LeaderboardClub, LeaderboardEntry } from '@matchpoynt/shared'
 import { Flame } from 'lucide-react'
 import HotStreakTag from '@/components/leaderboard/HotStreakTag'
 import ClubBadgeChip from '@/components/leaderboard/ClubBadgeChip'
@@ -16,13 +16,17 @@ interface LeaderboardTableProps {
   entries: LeaderboardEntry[]
   /** The public leaderboard's address, for share images; `null` when not published. */
   shareUrl: string | null
+  /** The viewer's own entry: only it gets a Share button. */
+  viewerPlayerId: string | null
+  /** The club that runs the session, for the share images. */
+  club: LeaderboardClub | null
   /** The club's own badges, to show the ones each player earned. */
   clubBadges: ClubBadgeView[]
 }
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n))
 
-export default function LeaderboardTable({ sport, entries, shareUrl, clubBadges }: LeaderboardTableProps) {
+export default function LeaderboardTable({ sport, entries, shareUrl, clubBadges, viewerPlayerId, club }: LeaderboardTableProps) {
   const tierLabel = (tierId: string) => sport.tiers.find((t) => t.id === tierId)?.label ?? tierId
   const unit = `${sport.terminology.scoreUnit}s`
 
@@ -92,7 +96,7 @@ export default function LeaderboardTable({ sport, entries, shareUrl, clubBadges 
               </TableCell>
               <TableCell className="text-right tabular-nums">{signed(e.pointsFor - e.pointsAgainst)}</TableCell>
               <TableCell className="text-right">
-                <PlayerShareButton entry={e} sport={sport} shareUrl={shareUrl} clubBadges={clubBadges.filter((b) => e.clubBadges.includes(b.id))} />
+                {e.playerId === viewerPlayerId && <PlayerShareButton entry={e} sport={sport} shareUrl={shareUrl} clubBadges={clubBadges.filter((b) => e.clubBadges.includes(b.id))} club={club} />}
               </TableCell>
             </TableRow>
             )

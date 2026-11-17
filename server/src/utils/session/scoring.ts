@@ -16,7 +16,7 @@ export function isValidGame(format: ScoringFormat, { a, b }: GameScore): boolean
 function describeRule(format: ScoringFormat): string {
   const parts = [`first to ${format.pointsToWin}`]
   if (format.winBy > 1) parts.push(`win by ${format.winBy}`)
-  if (format.cap !== undefined) parts.push(`cap ${format.cap}`)
+  if (format.cap !== undefined && format.cap > format.pointsToWin) parts.push(`ceiling ${format.cap}`)
   return parts.join(', ')
 }
 

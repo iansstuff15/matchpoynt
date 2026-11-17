@@ -4,12 +4,18 @@ import { bodyLimit } from 'hono/body-limit'
 import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import { limits } from '@/config/limits'
+import { accountingRoutes } from '@/routes/accounting'
 import { authRoutes } from '@/routes/auth'
 import { clubRoutes } from '@/routes/clubs'
 import { configRoutes } from '@/routes/config'
+import { directoryRoutes, peopleRoutes } from '@/routes/directory'
+import { userRoutes } from '@/routes/users'
+import { friendRoutes } from '@/routes/friends'
 import { gifRoutes } from '@/routes/gifs'
 import { mediaRoutes } from '@/routes/media'
+import { playRoutes } from '@/routes/play'
 import { inviteRoutes } from '@/routes/invites'
+import { invoiceRoutes } from '@/routes/invoices'
 import { memberRoutes } from '@/routes/members'
 import { profileRoutes } from '@/routes/profile'
 import { publicRoutes } from '@/routes/public'
@@ -19,7 +25,13 @@ import { sameOrigin } from '@/utils/http/middleware'
 import { isImageUpload } from '@/utils/http/upload'
 
 /** The API, mounted under /api behind the nginx proxy (or Vite's dev proxy). */
-const jsonBodyLimit = bodyLimit({ maxSize: limits.bodyBytes })
+const jsonBodyLimit = bodyLimit({
+  maxSize: limits.bodyBytes,
+  // Said plainly, rather than a bare 413 the app can only call a problem on Matchpoynt's side.
+  onError: () => {
+    throw new ApiError('invalid', 'That was too large to send. Shorten it, or pick a smaller file.')
+  },
+})
 const uploadBodyLimit = bodyLimit({
   maxSize: limits.uploadBodyBytes,
   onError: () => {
@@ -47,6 +59,13 @@ export function createApp() {
     .route('/members', memberRoutes)
     .route('/invites', inviteRoutes)
     .route('/gifs', gifRoutes)
+    .route('/invoices', invoiceRoutes)
+    .route('/accounting', accountingRoutes)
+    .route('/directory', directoryRoutes)
+    .route('/people', peopleRoutes)
+    .route('/friends', friendRoutes)
+    .route('/users', userRoutes)
+    .route('/play', playRoutes)
 
   app.onError((err, c) => {
     const id = c.get('requestId')

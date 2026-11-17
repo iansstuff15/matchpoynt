@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import PageMeta from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { isDesktop } from '@/utils/platform'
+import { homePath } from '@/utils/platform'
 
 export default function NotFoundPage() {
   return (
@@ -18,7 +18,7 @@ export default function NotFoundPage() {
         </EmptyHeader>
         <EmptyContent>
           <Button asChild>
-            <Link to={isDesktop() ? '/app' : '/'}>
+            <Link to={homePath()}>
               <House />
               Back to home
             </Link>

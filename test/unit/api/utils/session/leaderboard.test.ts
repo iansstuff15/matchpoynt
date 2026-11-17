@@ -28,16 +28,29 @@ describe('computeLeaderboard', () => {
   it('ranks by wins, then point difference, and shares ranks on ties', () => {
     const board = computeLeaderboard(
       [player('a'), player('b'), player('c'), player('d'), player('gone', false), player('idle')],
-      [match(['a', 'b'], ['c', 'd'], [[21, 10], [21, 12]], 'a'), match(['a', 'c'], ['b', 'gone'], [[21, 19], [21, 19]], 'a'), match(['d'], ['b'], [], null)],
+      [
+        match(
+          ['a', 'b'],
+          ['c', 'd'],
+          [
+            [21, 10],
+            [21, 12],
+          ],
+          'a',
+        ),
+        match(
+          ['a', 'c'],
+          ['b', 'gone'],
+          [
+            [21, 19],
+            [21, 19],
+          ],
+          'a',
+        ),
+        match(['d'], ['b'], [], null),
+      ],
     )
-    expect(board.map((e) => `${e.rank}:${e.playerId}:${e.wins}-${e.losses}:${e.played}`)).toEqual([
-      '1:a:2-0:2',
-      '2:b:1-1:3',
-      '3:c:1-1:2',
-      '4:gone:0-1:1',
-      '5:d:0-1:2',
-      '6:idle:0-0:0',
-    ])
+    expect(board.map((e) => `${e.rank}:${e.playerId}:${e.wins}-${e.losses}:${e.played}`)).toEqual(['1:a:2-0:2', '2:b:1-1:3', '3:c:1-1:2', '4:gone:0-1:1', '5:d:0-1:2', '6:idle:0-0:0'])
   })
 })
 
@@ -59,10 +72,7 @@ describe('streaks, movement, badges and spotlight', () => {
 
   it('reports how many places each player moved in the latest match', () => {
     // a & b lead after the first match; c & d win the latest by more and go above them.
-    const board = computeLeaderboard(players, [
-      at(match(['a', 'b'], ['c', 'd'], [[21, 10]], 'a'), 1),
-      at(match(['c', 'd'], ['a', 'b'], [[21, 5]], 'a'), 2),
-    ])
+    const board = computeLeaderboard(players, [at(match(['a', 'b'], ['c', 'd'], [[21, 10]], 'a'), 1), at(match(['c', 'd'], ['a', 'b'], [[21, 5]], 'a'), 2)])
     expect(board.map((e) => `${e.playerId}:${e.rank}:${e.movement}`)).toEqual(['c:1:2', 'd:1:2', 'a:3:-2', 'b:3:-2'])
   })
 
@@ -78,12 +88,11 @@ describe('streaks, movement, badges and spotlight', () => {
   })
 
   it('gives a hot streak from three wins in a row, and a loss ends it', () => {
-    const three = [
-      at(match(['a', 'b'], ['c', 'd'], [[21, 10]], 'a'), 1),
-      at(match(['a', 'c'], ['b', 'd'], [[21, 18]], 'a'), 2),
-      at(match(['a', 'd'], ['b', 'c'], [[21, 19]], 'a'), 3),
-    ]
-    const hot = (finished: MatchState[]) => computeLeaderboard(players, finished).filter((e) => e.badges.includes('hot-streak')).map((e) => e.playerId)
+    const three = [at(match(['a', 'b'], ['c', 'd'], [[21, 10]], 'a'), 1), at(match(['a', 'c'], ['b', 'd'], [[21, 18]], 'a'), 2), at(match(['a', 'd'], ['b', 'c'], [[21, 19]], 'a'), 3)]
+    const hot = (finished: MatchState[]) =>
+      computeLeaderboard(players, finished)
+        .filter((e) => e.badges.includes('hot-streak'))
+        .map((e) => e.playerId)
     expect(hot(three.slice(0, 2))).toEqual([])
     expect(hot(three)).toEqual(['a'])
     expect(hot([...three, at(match(['b', 'c'], ['a', 'd'], [[21, 12]], 'a'), 4)])).toEqual([])

@@ -56,7 +56,12 @@ export function useSessionBoard(sessionId: string, enabled = true) {
       return session
     },
     enabled,
-    refetchInterval: (query) => (!changing && query.state.data?.awaitingCheckIn.length ? board.checkInPollMs : false),
+    refetchInterval: (query) => {
+      if (changing || !query.state.data) return false
+      if (query.state.data.awaitingCheckIn.length) return board.checkInPollMs
+      // Players of a club's session can take a break from their phones.
+      return query.state.data.clubId ? board.clubSessionPollMs : false
+    },
   })
 }
 
@@ -76,7 +81,7 @@ export function useLatestEndedSession(enabled = true) {
 }
 
 /** A finished session by id, for its page (`/app/<session id>`). */
-/** Every finished session, newest first, a page at a time (Past sessions). */
+/** Every finished session, newest first, a page at a time (the session board's previous sessions). */
 export function useEndedSessions(enabled = true) {
   const client = useQueryClient()
   return useInfiniteQuery({
@@ -248,6 +253,14 @@ export function useSessionActions(sessionId: string | null) {
       action: (id) => `check ${playerName(latest(), id)} in`,
       progress: (id) => `Checking ${playerName(latest(), id)} in…`,
       done: (_s, id) => `${playerName(latest(), id)} checked in and joined the queue`,
+      onSuccess: (s) => setBoard(s),
+    }),
+    setBreak: useTracked({
+      scope: 'board',
+      mutationFn: ({ playerId, onBreak }: { playerId: string; onBreak: boolean }) => api<SessionView>('PUT', path(`/players/${playerId}/break`), { body: { onBreak }, version: version() }),
+      action: ({ playerId, onBreak }) => (onBreak ? `start ${playerName(latest(), playerId)}'s break` : `bring ${playerName(latest(), playerId)} back from their break`),
+      progress: ({ playerId, onBreak }) => (onBreak ? `Starting ${playerName(latest(), playerId)}'s break…` : `Bringing ${playerName(latest(), playerId)} back…`),
+      done: (_s, { playerId, onBreak }) => (onBreak ? `${playerName(latest(), playerId)} is on a break` : `${playerName(latest(), playerId)} is back in the queue`),
       onSuccess: (s) => setBoard(s),
     }),
     openCheckIn: useTracked({

@@ -1,11 +1,11 @@
-import { createClub, openClubTab } from '../support/club'
+import { createClub, openClubPage } from '../support/club'
 import { expect, test } from '../support/mockApi'
 import { pageReady } from '../support/pageReady'
 
 test.describe('club members', () => {
   test.beforeEach(async ({ page }) => {
     await createClub(page, 'Eastside Shuttlers')
-    await openClubTab(page, 'Members')
+    await openClubPage(page, 'Members')
   })
 
   test('adding, editing and removing a member', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('club members', () => {
     await expect(page.getByRole('row').filter({ hasText: 'Maria S. Cruz' })).toHaveCount(0)
   })
 
-  test('the club header counts its members', async ({ page }) => {
+  test("the club's dashboard counts its members", async ({ page }) => {
     for (const name of ['Ana Reyes', 'Ben Lim', 'Cy Tan']) {
       await page.getByRole('button', { name: 'Add member' }).click()
       const add = page.getByRole('dialog', { name: 'Add a member' })
@@ -55,6 +55,7 @@ test.describe('club members', () => {
       await expect(add).toBeHidden()
       await pageReady(page)
     }
+    await openClubPage(page, 'Dashboard')
     await expect(page.getByText('3 members')).toBeVisible()
   })
 

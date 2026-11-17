@@ -1,6 +1,6 @@
 import { LayoutGrid, Medal, Settings2, Trophy, Unplug } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import SignInCard from '@/components/auth/SignInCard'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
 import SessionLeaderboard from '@/components/leaderboard/SessionLeaderboard'
@@ -16,7 +16,8 @@ import QueueListSkeleton from '@/components/session/QueueListSkeleton'
 import SessionActionsSkeleton from '@/components/session/SessionActionsSkeleton'
 import SessionBoard from '@/components/session/SessionBoard'
 import SessionBoardSkeleton from '@/components/session/SessionBoardSkeleton'
-import SessionEmptyState from '@/components/session/SessionEmptyState'
+import SessionsOverview from '@/components/session/overview/SessionsOverview'
+import SessionsOverviewSkeleton from '@/components/session/overview/SessionsOverviewSkeleton'
 import SessionEndedSkeleton from '@/components/session/SessionEndedSkeleton'
 import SessionEndedView from '@/components/session/SessionEndedView'
 import SessionSummary from '@/components/session/SessionSummary'
@@ -35,8 +36,8 @@ import { draftFromSession, lockedIds, newSessionDraft } from '@/utils/forms/sess
 import { clockOffset } from '@/utils/time/clockOffset'
 import { useAppConfig, useFeatures } from '@/utils/hooks/useFeatures'
 import { useMe } from '@/utils/hooks/useMe'
-import { recall, remember } from '@/utils/platform/remember'
-import { useActiveSessions, useDeleteSession, useEndedSession, useLatestEndedSession, useSessionActions, useSessionBoard } from '@/utils/hooks/useSession'
+import { remember } from '@/utils/platform/remember'
+import { useActiveSessions, useDeleteSession, useEndedSession, useSessionActions, useSessionBoard } from '@/utils/hooks/useSession'
 
 /**
  * The Queue Master's page. Several sessions can run at once: each has its
@@ -61,7 +62,6 @@ export default function SessionPage() {
   const isRunning = Boolean(sessionId && running.some((s) => s.id === sessionId))
   const board = useSessionBoard(sessionId ?? '', isRunning)
   const session = isRunning ? (board.data ?? null) : null
-  const ended = useLatestEndedSession(!sessionId && actives.isSuccess && running.length === 0)
   const viewed = useEndedSession(sessionId ?? '', Boolean(sessionId) && actives.isSuccess && !isRunning)
   const actions = useSessionActions(isRunning ? sessionId! : null)
   const sport = session ? sports[session.sportId] : null
@@ -70,27 +70,21 @@ export default function SessionPage() {
     if (isRunning && sessionId) remember('session', sessionId)
   }, [isRunning, sessionId])
 
-  // A Queue Master with no session at all (none running, none finished) goes straight into setup.
+  // Setup opens only when asked for ("New session", ?new=1, or the empty board's button), never by itself.
   const [dialog, setDialog] = useState<SetupMode | null>(null)
   const [tab, setTab] = useState('management')
   // A closed tournament takes its tab with it: fall back to the board.
   const shownTab = tab === 'tournament' && !(web.tournaments && session?.tournament) ? 'management' : tab
-  const [autoOpened, setAutoOpened] = useState(false)
   // "New session" from the sidebar's switcher arrives as /app?new=1.
   const [params, setParams] = useSearchParams()
   // Handled once per ?new=1: clearing it updates the address only after this render, so without the flag it would be handled again forever.
   const [newHandled, setNewHandled] = useState(false)
   if (params.has('new') && signedIn && config.isSuccess && !newHandled) {
     setNewHandled(true)
-    setAutoOpened(true)
     setDialog('create')
     setParams({}, { replace: true })
   }
   if (!params.has('new') && newHandled) setNewHandled(false)
-  if (!autoOpened && !sessionId && actives.isSuccess && running.length === 0 && ended.isSuccess && ended.data === null) {
-    setAutoOpened(true)
-    setDialog('create')
-  }
 
   const loading = config.isSuccess && (me.isLoading || (signedIn && (actives.isPending || (isRunning && board.isPending))))
   const save = dialog === 'edit' ? actions.update : actions.create
@@ -98,7 +92,8 @@ export default function SessionPage() {
     save.reset()
     setDialog(mode)
   }
-  const withQueue = loading || Boolean(session && sport)
+  // The queue panel is a running board's (and its skeleton while one opens); the overview has none.
+  const withQueue = (loading && Boolean(sessionId)) || Boolean(session && sport)
 
   const header = (
     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -142,11 +137,7 @@ export default function SessionPage() {
           <FinishSessionButton
             blockedReason={session.endBlockedReason}
             pending={actions.finish.isPending}
-            onConfirm={() => {
-              // Finishing shows the ended session and its leaderboard, not setup for the next one.
-              setAutoOpened(true)
-              actions.finish.mutate()
-            }}
+            onConfirm={() => actions.finish.mutate()}
           />
           <DeleteSessionButton
             label={session.title ?? `${sport?.name ?? 'This'} session`}
@@ -154,7 +145,7 @@ export default function SessionPage() {
             onConfirm={() =>
               deleteSession.mutate(
                 { id: session.id, label: session.title ?? `${sport?.name ?? 'This'} session` },
-                // Back to /app: another running session, the last finished one, or setup.
+                // Back to /app: the running and previous sessions.
                 { onSuccess: () => navigate('/app', { replace: true }) },
               )
             }
@@ -181,7 +172,7 @@ export default function SessionPage() {
       </Empty>
     )
   } else if (loading) {
-    body = sessionId ? <SessionEndedSkeleton /> : <SessionBoardSkeleton />
+    body = !sessionId ? <SessionsOverviewSkeleton /> : isRunning ? <SessionBoardSkeleton /> : <SessionEndedSkeleton />
   } else if (!signedIn) {
     body = (
       <div className="flex justify-center py-10">
@@ -190,10 +181,9 @@ export default function SessionPage() {
     )
   } else if (actives.isError) {
     body = <ErrorBanner error={actives.error} action="load your sessions" onRetry={() => void actives.refetch()} />
-  } else if (!sessionId && running.length > 0 && dialog === null) {
-    // Reopen the session this browser had open, or the newest.
-    const last = recall('session')
-    return <Navigate to={`/app/${running.some((s) => s.id === last) ? last : running[0]!.id}`} replace />
+  } else if (!sessionId) {
+    // No session open: the running and previous sessions to pick from; nothing opens by itself.
+    body = <SessionsOverview running={running} onSetup={() => openDialog('create')} />
   } else if (isRunning && board.isError) {
     body = <ErrorBanner error={board.error} action="load this session" onRetry={() => void board.refetch()} />
   } else if (sessionId && !isRunning) {
@@ -224,7 +214,7 @@ export default function SessionPage() {
           <SessionBoard session={session} sport={sport} actions={actions} clockOffsetMs={clockOffset(session.serverTime, board.dataUpdatedAt)} />
         </TabsContent>
         <TabsContent value="leaderboard" className="mt-6">
-          <SessionLeaderboard sessionId={session.id} sport={sport} shareUrl={session.publicUrl} />
+          <SessionLeaderboard sessionId={session.id} sport={sport} shareUrl={session.publicUrl} title={session.title} />
         </TabsContent>
         {web.tournaments && session.tournament && (
           <TabsContent value="tournament" className="mt-6">
@@ -233,20 +223,6 @@ export default function SessionPage() {
         )}
       </Tabs>
     )
-  } else if (!sessionId && running.length > 0) {
-    // "New session" while others run: just the setup dialog. The last finished session isn't looked up then, so don't wait for it.
-    body = null
-  } else if (ended.isPending) {
-    body = <SessionEndedSkeleton />
-  } else if (ended.isError) {
-    body = <ErrorBanner error={ended.error} action="load your last session" onRetry={() => void ended.refetch()} />
-  } else if (ended.data && dialog === null) {
-    // The finished session has its own page, so its link can be shared and found again.
-    return <Navigate to={`/app/${ended.data.id}`} replace />
-  } else if (ended.data) {
-    body = <SessionEndedView session={ended.data} onNewSession={() => openDialog('create')} />
-  } else {
-    body = <SessionEmptyState onSetup={() => openDialog('create')} />
   }
 
   const main = (
@@ -275,9 +251,11 @@ export default function SessionPage() {
               queue={session.queue}
               upNext={session.upNext}
               awaitingCheckIn={session.awaitingCheckIn}
+              onBreak={session.onBreak}
               playersPerMatch={session.playersPerMatch}
               onRemove={(id) => actions.removePlayer.mutate(id)}
               onCheckIn={(id) => actions.checkInPlayer.mutate(id)}
+              onSetBreak={(playerId, onBreak) => actions.setBreak.mutate({ playerId, onBreak })}
               clockOffsetMs={clockOffset(session.serverTime, board.dataUpdatedAt)}
               tournament={
                 web.tournaments && session.tournament?.status === 'active'
@@ -295,7 +273,7 @@ export default function SessionPage() {
       ) : (
         <>
           {main}
-          {loading && (
+          {loading && sessionId && (
             <aside aria-label="Queue" className="session-queue-panel">
               <QueueListSkeleton />
             </aside>

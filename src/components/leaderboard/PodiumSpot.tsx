@@ -1,4 +1,4 @@
-import type { ClubBadgeView, LeaderboardEntry } from '@matchpoynt/shared'
+import type { ClubBadgeView, LeaderboardClub, LeaderboardEntry } from '@matchpoynt/shared'
 import { Crown, Flame, Trophy } from 'lucide-react'
 import HotStreakTag from '@/components/leaderboard/HotStreakTag'
 import ClubBadgeChip from '@/components/leaderboard/ClubBadgeChip'
@@ -19,12 +19,16 @@ interface PodiumSpotProps {
   shareUrl: string | null
   /** The club's own badges, to show the ones this player earned. */
   clubBadges: ClubBadgeView[]
+  /** The viewer's own entry: only it gets a Share button. */
+  viewerPlayerId: string | null
+  /** The club that runs the session, for the share images. */
+  club: LeaderboardClub | null
 }
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n))
 
 /** One podium place: the player's card standing on a bar whose height shows the place. */
-export default function PodiumSpot({ sport, place, entry, shareUrl, clubBadges }: PodiumSpotProps) {
+export default function PodiumSpot({ sport, place, entry, shareUrl, clubBadges, viewerPlayerId, club }: PodiumSpotProps) {
   const hot = Boolean(entry?.badges.includes(hotStreakBadge))
   const chips = entry?.badges.filter((b) => b !== hotStreakBadge) ?? []
   const own = clubBadges.filter((b) => entry?.clubBadges.includes(b.id))
@@ -47,7 +51,7 @@ export default function PodiumSpot({ sport, place, entry, shareUrl, clubBadges }
                 <Trophy className="size-4 text-primary sm:size-5" aria-hidden />
                 <span data-count={entry.wins}>{entry.wins}</span>
               </p>
-              <PlayerShareButton entry={entry} sport={sport} shareUrl={shareUrl} clubBadges={own} />
+              {entry.playerId === viewerPlayerId && <PlayerShareButton entry={entry} sport={sport} shareUrl={shareUrl} clubBadges={own} club={club} />}
             </span>
           </div>
           <div className="min-w-0">

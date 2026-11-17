@@ -45,7 +45,7 @@ export function useSignUp() {
 export function useForgotPassword() {
   return useMutation({
     mutationFn: (input: ForgotPasswordInput) => api<void>('POST', '/auth/forgot-password', { body: input }),
-    onSuccess: (_r, input) => notifyDone('Reset link sent', { description: `If ${input.email} has an account, the link is on its way.` }),
+    onSuccess: () => notifyDone('Reset link sent', { description: 'If the account exists, the link is on its way to its email.' }),
   })
 }
 
@@ -65,6 +65,14 @@ export function useSetPassword() {
 }
 
 /** The signed-in person's profile and what it is missing. */
+/** Asks for a new sign-in email: Firebase emails a link to it, and the change happens once it's opened. */
+export function useChangeEmail() {
+  return useMutation({
+    mutationFn: (input: { email: string }) => api<void>('POST', '/auth/email', { body: input }),
+    onSuccess: (_r, input) => notifyDone('Check your new inbox', { description: `Open the link we sent to ${input.email} to switch to it.` }),
+  })
+}
+
 export function useProfile(enabled = true) {
   const { web } = useFeatures()
   return useQuery({

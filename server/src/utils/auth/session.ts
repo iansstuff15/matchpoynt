@@ -50,6 +50,18 @@ export function endSession(c: Context): void {
  * the refresh token (and the cookies updated). A sign-in that ended elsewhere
  * (revoked, deleted, disabled) clears the cookies and counts as signed out.
  */
+/**
+ * Accounts must confirm their email before they count as signed in. Guests have
+ * no email; Google and invite links confirm it themselves.
+ */
+export const emailConfirmed = (user: Pick<AuthUser, 'isAnonymous' | 'emailVerified'>) => user.isAnonymous || user.emailVerified
+
+/** Drops this browser's sign-in and answers "nobody". */
+function signedOut(c: Context): null {
+  endSession(c)
+  return null
+}
+
 export async function readSession(c: Context): Promise<AuthSession | null> {
   const refreshToken = getCookie(c, authCookies.refresh)
   if (!refreshToken) return null
@@ -57,6 +69,7 @@ export async function readSession(c: Context): Promise<AuthSession | null> {
   if (idToken) {
     try {
       const user = await verifyIdToken(idToken)
+      if (!emailConfirmed(user)) return signedOut(c)
       if (user.hasRole) return { user, tokens: { idToken, refreshToken } }
     } catch (error) {
       if (!isRejectedToken(error)) throw error
@@ -64,6 +77,7 @@ export async function readSession(c: Context): Promise<AuthSession | null> {
   }
   try {
     const session = await authorize(await refreshTokens(refreshToken))
+    if (!emailConfirmed(session.user)) return signedOut(c)
     saveSession(c, session.tokens)
     return session
   } catch (error) {

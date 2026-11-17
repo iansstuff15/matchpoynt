@@ -1,4 +1,5 @@
 import type { ClubBadgeView } from './Club.ts'
+import type { FeeScheme } from './Fee.ts'
 import type { CourtSide, CourtStatus, LateJoinerPlacement, LeaderboardBadgeId, MatchSide, MatchmakingStrategyId, QueueingMode } from '../types/session.ts'
 import type { MatchFormat, SportId } from '../types/sport.ts'
 import type { TournamentView } from './Tournament.ts'
@@ -24,6 +25,8 @@ export interface SessionSettings {
   scoring: ScoringSettings
   rules: SessionRules
   matchmaking: MatchmakingStrategyId
+  /** The joining fee players are invoiced when the session ends; `null` for no fee (and while fees are switched off). */
+  fee: FeeScheme | null
 }
 
 export interface CourtSetup {
@@ -61,6 +64,8 @@ export interface PlayerView extends PlayerRef {
   checkedIn: boolean
   /** When they started waiting for their next game (checked in, or came off court), ISO; `null` while on court or not checked in. */
   waitingSince: string | null
+  /** Since when they've been on a break, ISO; `null` while they're not on one. Players on a break sit out the queue. */
+  breakSince: string | null
 }
 
 /** How check-in is going, for the QR dialog. */
@@ -132,6 +137,8 @@ export interface SessionView extends SessionSettings {
   upNext: UpNextView | null
   /** Roster players who haven't checked in yet, by name. They can't be matched. */
   awaitingCheckIn: PlayerView[]
+  /** Checked-in players taking a break, longest first. They sit out until they're back. */
+  onBreak: PlayerView[]
   /** Players in the running tournament (held out of open play), by name; empty without one. */
   tournamentCompetitors: PlayerView[]
   /** While a tournament runs: why competitors can't be changed from the board (it has started, hand-picked teams), or `null` when they can. */
@@ -219,6 +226,16 @@ export interface LeaderboardView {
   recentMatches: MatchResult[]
   /** Badges of the club that runs the session; empty for sessions without a club or while club badges are off. */
   clubBadges: ClubBadgeView[]
+  /** The viewer's own entry (matched by their username or club roster name), the only one they can make share images of; `null` when they aren't on it. */
+  viewerPlayerId: string | null
+  /** The club that runs the session, for its share images; `null` for sessions without one. */
+  club: LeaderboardClub | null
+}
+
+/** The club on a leaderboard and its images: its name and photo (`/api/media/...`). */
+export interface LeaderboardClub {
+  name: string
+  avatarUrl: string | null
 }
 
 /** The Queue Master's most recently finished session, shown with its leaderboard until the next one starts. */
@@ -236,6 +253,8 @@ export interface EndedSessionView {
   /** Matches finished with or without a score. */
   matchesFinished: number
   players: number
+  /** It charged a joining fee, so it has invoices (`GET /api/invoices/:sessionId`). Always false while fees are off. */
+  hasFee: boolean
 }
 
 /** What anyone with a published link sees. */
@@ -247,6 +266,10 @@ export interface PublicLeaderboardView {
   entries: LeaderboardEntry[]
   recentMatches: MatchResult[]
   clubBadges: ClubBadgeView[]
+  /** The signed-in viewer's own entry, if they played; `null` signed out or not on it. */
+  viewerPlayerId: string | null
+  /** The club that runs the session, for its share images. */
+  club: LeaderboardClub | null
 }
 
 export interface PublishResponse {

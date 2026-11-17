@@ -1,0 +1,1 @@
+ALTER TABLE "session_players" ADD COLUMN "break_since" timestamp with time zone;

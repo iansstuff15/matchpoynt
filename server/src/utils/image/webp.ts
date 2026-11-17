@@ -62,9 +62,10 @@ export type SourceType = 'image/jpeg' | 'image/png' | 'image/webp'
 /**
  * Re-encodes a checked photo (see `checkImage`) as WebP. JPEGs are turned
  * upright from their EXIF orientation first, because WebP keeps no EXIF;
- * re-encoding also drops other metadata such as GPS location.
+ * re-encoding also drops other metadata such as GPS location. `lossless`
+ * keeps every pixel, for QR codes.
  */
-export async function toWebp(bytes: Uint8Array, type: SourceType): Promise<Uint8Array> {
+export async function toWebp(bytes: Uint8Array, type: SourceType, options: { lossless?: boolean } = {}): Promise<Uint8Array> {
   await loadCodecs()
   const buffer = bytes.slice().buffer
   let image: Awaited<ReturnType<typeof decodeJpeg>>
@@ -82,5 +83,6 @@ export async function toWebp(bytes: Uint8Array, type: SourceType): Promise<Uint8
     const megapixels = Math.round(images.maxPixels / 1_000_000)
     throw invalid(`That photo is too large (over ${megapixels} megapixels). Resize it and try again.`, { image: 'Too many pixels' })
   }
-  return new Uint8Array(await encodeWebp(image, { quality: images.webpQuality }))
+  // Lossless keeps every pixel: a QR code must still scan.
+  return new Uint8Array(await encodeWebp(image, options.lossless ? { lossless: 1 } : { quality: images.webpQuality }))
 }

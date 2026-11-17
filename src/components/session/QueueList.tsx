@@ -3,6 +3,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { QrCode, Users } from 'lucide-react'
 import AwaitingCheckInList from '@/components/session/checkin/AwaitingCheckInList'
 import NextMatchGroup from '@/components/session/queue/NextMatchGroup'
+import OnBreakList from '@/components/session/queue/OnBreakList'
 import QueueRow from '@/components/session/queue/QueueRow'
 import TournamentCompetitors from '@/components/session/queue/TournamentCompetitors'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,9 +23,13 @@ interface QueueListProps {
   upNext: UpNextView | null
   /** Roster players not checked in yet; listed under the queue, not matched. */
   awaitingCheckIn: PlayerView[]
+  /** Checked-in players taking a break; listed under the queue, not matched. */
+  onBreak: PlayerView[]
   playersPerMatch: number
   onRemove: (playerId: string) => void
   onCheckIn: (playerId: string) => void
+  /** Starts (`true`) or ends a player's break. */
+  onSetBreak: (playerId: string, onBreak: boolean) => void
   /** Device clock correction from the API, so wait times follow its clock. */
   clockOffsetMs: number
   /** While a tournament runs: its competitors, whether they can change, and the update. `null` without one. */
@@ -38,9 +43,9 @@ const queueTarget: BoardDropTarget = { kind: 'queue' }
  * against whom; with manual queueing, the waiting players in call order. Then
  * anyone still to check in. Only the player list scrolls.
  */
-export default function QueueList({ sport, queue, upNext, awaitingCheckIn, playersPerMatch, onRemove, onCheckIn, tournament, clockOffsetMs }: QueueListProps) {
+export default function QueueList({ sport, queue, upNext, awaitingCheckIn, onBreak, playersPerMatch, onRemove, onCheckIn, onSetBreak, tournament, clockOffsetMs }: QueueListProps) {
   // One clock for every wait time in the panel, ticking only while someone is waiting.
-  const now = useNow(queue.length > 0, board.timerTickMs, clockOffsetMs)
+  const now = useNow(queue.length > 0 || onBreak.length > 0, board.timerTickMs, clockOffsetMs)
   const tierLabel = (tierId: string) => sport.tiers.find((t) => t.id === tierId)?.label ?? tierId
   const { setNodeRef, isOver, active } = useDroppable({ id: 'queue', data: queueTarget })
   const fromCourt = Boolean(active && (active.data.current as { from?: unknown })?.from !== 'queue')
@@ -61,7 +66,7 @@ export default function QueueList({ sport, queue, upNext, awaitingCheckIn, playe
       </CardHeader>
       <CardContent className="board-queue-body">
         {tournament && <TournamentCompetitors {...tournament} waiting={queue} />}
-        {queue.length === 0 && awaitingCheckIn.length === 0 ? (
+        {queue.length === 0 && awaitingCheckIn.length === 0 && onBreak.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -73,7 +78,7 @@ export default function QueueList({ sport, queue, upNext, awaitingCheckIn, playe
           </Empty>
         ) : (
           <ScrollArea className="board-queue-scroll" aria-label="Players in the queue">
-            {queue.length === 0 && (
+            {queue.length === 0 && onBreak.length === 0 && (
               <p className="flex items-center gap-2 py-3 pr-3 text-sm text-muted-foreground">
                 <QrCode className="size-4 shrink-0" aria-hidden />
                 No one has checked in yet. Open the check-in QR for players to scan.
@@ -82,7 +87,7 @@ export default function QueueList({ sport, queue, upNext, awaitingCheckIn, playe
             {upNext && upNext.matches.length > 0 && (
               <ol aria-label="Matches lined up" className="grid gap-2 pt-1 pr-3 pb-2">
                 {upNext.matches.map((match, i) => (
-                  <NextMatchGroup key={match.sides.flat().map((p) => p.id).join()} match={match} index={i} now={now} />
+                  <NextMatchGroup key={match.sides.flat().map((p) => p.id).join()} match={match} index={i} now={now} onBreak={(id) => onSetBreak(id, true)} />
                 ))}
               </ol>
             )}
@@ -95,11 +100,12 @@ export default function QueueList({ sport, queue, upNext, awaitingCheckIn, playe
                 )}
                 <ol aria-label={upNext ? undefined : 'Waiting players in call order'} className="divide-y pr-3">
                   {waiting.map((player, i) => (
-                    <QueueRow key={player.id} player={player} position={firstWaiting + i + 1} tierLabel={tierLabel(player.tierId)} now={now} onRemove={onRemove} />
+                    <QueueRow key={player.id} player={player} position={firstWaiting + i + 1} tierLabel={tierLabel(player.tierId)} now={now} onRemove={onRemove} onBreak={(id) => onSetBreak(id, true)} />
                   ))}
                 </ol>
               </section>
             )}
+            {onBreak.length > 0 && <OnBreakList players={onBreak} now={now} onBack={(id) => onSetBreak(id, false)} />}
             {awaitingCheckIn.length > 0 && (
               <AwaitingCheckInList sport={sport} players={awaitingCheckIn} onCheckIn={onCheckIn} onRemove={onRemove} />
             )}

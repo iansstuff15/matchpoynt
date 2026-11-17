@@ -1,20 +1,21 @@
-import type { MemberSuggestionsResponse, SportId } from '@matchpoynt/shared'
+import { directoryLimits, type MemberSuggestionsResponse, type SportId } from '@matchpoynt/shared'
 import { Hono } from 'hono'
 import { features } from '@/config/features'
 import { findMembers, sessionForSuggestions } from '@/queries/clubs'
 import { rankSuggestions } from '@/utils/club/suggest'
 import { ApiError } from '@/utils/http/errors'
 import { requireFeature } from '@/utils/http/feature'
-import { resolveUser } from '@/utils/http/middleware'
+import { requireSessionRunner, resolveUser } from '@/utils/http/middleware'
 import type { AppEnv } from '@/utils/http/types'
 import { memberSuggestionQuery } from '@/utils/validation/schemas'
 
-const shown = 8
+const shown = directoryLimits.searchResults
 
 /** Club members suggested while typing a player's name on the board or in session setup. */
 export const memberRoutes = new Hono<AppEnv>()
   .use(requireFeature('web', 'clubs'))
   .use(resolveUser)
+  .use(requireSessionRunner)
   .get('/suggestions', async (c) => {
     if (!c.get('user')) {
       if (features().web.signIn) throw new ApiError('unauthorized', 'Your sign-in has expired. Sign in again.')

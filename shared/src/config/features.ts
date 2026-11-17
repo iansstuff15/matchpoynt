@@ -23,6 +23,13 @@ export const defaultFeatures: Features = {
     clubBadges: true,
     // Needs a GIPHY API key (GIPHY_API_KEY) on the API.
     gifSearch: false,
+    fees: true,
+    accounting: true,
+    clubDirectory: true,
+    playerView: true,
+    clubFeedback: true,
+    clubAnnouncements: true,
+    friends: true,
   },
   desktop: {
     // Needs the Rust offline engine.
@@ -53,6 +60,13 @@ export const featuresOff: Features = {
     publishTournaments: false,
     clubBadges: false,
     gifSearch: false,
+    fees: false,
+    accounting: false,
+    clubDirectory: false,
+    playerView: false,
+    clubFeedback: false,
+    clubAnnouncements: false,
+    friends: false,
   },
   desktop: { offlineMode: false, autoUpdate: false },
 }
@@ -75,6 +89,13 @@ export const featureEnvNames = {
     publishTournaments: 'FEATURE_WEB_PUBLISH_TOURNAMENTS',
     clubBadges: 'FEATURE_WEB_CLUB_BADGES',
     gifSearch: 'FEATURE_WEB_GIF_SEARCH',
+    fees: 'FEATURE_WEB_FEES',
+    accounting: 'FEATURE_WEB_ACCOUNTING',
+    clubDirectory: 'FEATURE_WEB_CLUB_DIRECTORY',
+    playerView: 'FEATURE_WEB_PLAYER_VIEW',
+    clubFeedback: 'FEATURE_WEB_CLUB_FEEDBACK',
+    clubAnnouncements: 'FEATURE_WEB_CLUB_ANNOUNCEMENTS',
+    friends: 'FEATURE_WEB_FRIENDS',
   },
   desktop: {
     offlineMode: 'FEATURE_DESKTOP_OFFLINE_MODE',

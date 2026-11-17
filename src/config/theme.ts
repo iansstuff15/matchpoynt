@@ -35,6 +35,9 @@ export const theme: Theme = {
     'warning-foreground': 'oklch(0.38 0.09 60)',
     info: 'oklch(0.6 0.13 240)',
     'info-foreground': 'oklch(0.35 0.09 245)',
+    // Accounting chart series (validated as a pair: colour-blind safe and 3:1 on the card surface).
+    'chart-collected': '#2a78d6',
+    'chart-spent': '#eb6834',
     // Landing page: charcoal sections after the hero (by-ian layout, Matchpoynt palette).
     deep: 'oklch(0.205 0 0)',
     'deep-strong': 'oklch(0.16 0 0)',
@@ -68,6 +71,10 @@ export const theme: Theme = {
     'sidebar-accent-foreground': 'oklch(0.98 0 0)',
     'sidebar-border': 'oklch(1 0 0 / 16%)',
     'sidebar-ring': 'oklch(0.69 0.19 42)',
+    // The logo's two arches (components/brand/LogoMark): navy ink and coral. A club's accent replaces the coral
+    // (useClubTheme); the ink arch follows the text colour it sits on, so it reads on the sidebar too.
+    'logo-ink': '#101A33',
+    'logo-accent': '#FF5A4E',
   },
   radius: '0.75rem',
   fonts: {

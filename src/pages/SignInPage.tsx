@@ -9,9 +9,10 @@ const errors: Record<string, string> = {
     'The sign-in provider refused to start. It is usually turned off or missing its client ID or secret in Firebase (Authentication > Sign-in method). Try another method meanwhile.',
   cancelled: 'Sign-in was cancelled before it finished. Try again, or use another method.',
   linked:
-    'That email already has an account that signs in another way. Sign in with your email and password (or an email link) first; the provider can be used after that.',
-  missing_code: 'The sign-in link arrived without its one-time code, so it may have been cut off. Request a new link.',
-  exchange: 'The sign-in link has expired or was already used. Each link works once, for a limited time. Request a new one.',
+    'That email already has an account that signs in another way. Sign in with your email and password first; the provider can be used after that.',
+  missing_code: 'The link arrived without its one-time code, so it may have been cut off. Sign in with your password, or ask the club to send the invite again.',
+  unconfirmed: "That account's email isn't confirmed yet. Sign in with your email and password to get a new confirmation link.",
+  exchange: 'The link has expired or was already used. Each link works once, for a limited time. Sign in with your password, or ask the club to send the invite again.',
 }
 
 export default function SignInPage() {

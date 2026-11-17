@@ -1,5 +1,5 @@
 import { badgeCard, badgeDialog, createBadge } from '../support/badges'
-import { createClub, openClubTab } from '../support/club'
+import { createClub, openClubPage } from '../support/club'
 import { gif, png } from '../support/images'
 import { expect, test } from '../support/mockApi'
 import { pageReady } from '../support/pageReady'
@@ -78,7 +78,7 @@ test.describe('club badges', () => {
   })
 
   test('switching to "across all club sessions" drops conditions that only count in one session', async ({ page }) => {
-    await openClubTab(page, 'Badges')
+    await openClubPage(page, 'Badges')
     await page.getByRole('button', { name: 'New badge' }).click()
     const dialog = badgeDialog(page)
     await dialog.getByRole('combobox', { name: 'Condition 1' }).click()
@@ -88,7 +88,7 @@ test.describe('club badges', () => {
   })
 
   test('the API refuses a badge without a name or conditions, and says why', async ({ page }) => {
-    await openClubTab(page, 'Badges')
+    await openClubPage(page, 'Badges')
     await page.getByRole('button', { name: 'New badge' }).click()
     const dialog = badgeDialog(page)
     await dialog.getByRole('button', { name: 'Create badge' }).click()
@@ -133,7 +133,7 @@ test.describe('club badges with GIF search off', () => {
   test('uploading a GIF is the only option, with no tabs', async ({ page, api }) => {
     api.state.features.web.gifSearch = false
     await createClub(page, 'Quiet Club')
-    await openClubTab(page, 'Badges')
+    await openClubPage(page, 'Badges')
     await page.getByRole('button', { name: 'New badge' }).click()
     const dialog = badgeDialog(page)
     await expect(dialog.getByRole('tab')).toHaveCount(0)

@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
-/** Same frame as ClubHero: cover, overlapping avatar, name and counts, description. */
+/** Same frame as ClubHero: cover, overlapping avatar, name and counts, settings button. */
 export default function ClubHeroSkeleton() {
   return (
     <div className="grid gap-3">
@@ -11,8 +11,8 @@ export default function ClubHeroSkeleton() {
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-4 w-48" />
         </div>
+        <Skeleton className="h-9 w-28" />
       </div>
-      <Skeleton className="mx-2 h-4 max-w-xl sm:mx-4" />
     </div>
   )
 }

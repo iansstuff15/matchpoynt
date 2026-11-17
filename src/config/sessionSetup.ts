@@ -1,4 +1,4 @@
-import { Gavel, LandPlot, Shuffle, Trophy, Users } from 'lucide-react'
+import { Gavel, LandPlot, ReceiptText, Shuffle, Trophy, Users } from 'lucide-react'
 import type { SetupStep } from '@/interfaces/SetupStep'
 
 export const setupSteps: SetupStep[] = [
@@ -7,4 +7,11 @@ export const setupSteps: SetupStep[] = [
   { id: 'scoring', label: 'Scoring', description: 'Choose how matches are scored and how many play per side.', icon: Trophy },
   { id: 'rules', label: 'Rules', description: 'Set court filling, time limits and late arrivals.', icon: Gavel },
   { id: 'matchmaking', label: 'Matchmaking', description: 'Choose how the next match is picked from the queue.', icon: Shuffle },
+  {
+    id: 'fees',
+    label: 'Fees',
+    description: 'Set the joining fee. Everyone who came is invoiced when the session ends.',
+    icon: ReceiptText,
+    feature: 'fees',
+  },
 ]

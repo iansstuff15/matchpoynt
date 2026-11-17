@@ -87,9 +87,9 @@ export default function SessionSwitcher({ sessions, currentId, onNew, variant = 
           New session
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/app/past">
+          <Link to="/app">
             <History aria-hidden />
-            Past sessions
+            All sessions
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

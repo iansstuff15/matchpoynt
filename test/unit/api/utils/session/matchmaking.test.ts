@@ -17,11 +17,17 @@ const rank = (p: PlayerState) => Number(p.tierId)
 
 describe('matchmaking', () => {
   it('rotation alternates sides in queue order', () => {
-    expect(splitSides('rotation', [P('a', 0), P('b', 5), P('c', 1), P('d', 4)], rank)).toEqual([['a', 'c'], ['b', 'd']])
+    expect(splitSides('rotation', [P('a', 0), P('b', 5), P('c', 1), P('d', 4)], rank)).toEqual([
+      ['a', 'c'],
+      ['b', 'd'],
+    ])
   })
 
   it('balanced picks the split with the closest total skill', () => {
-    expect(splitSides('balanced', [P('w', 0), P('x', 1), P('y', 4), P('z', 5)], rank)).toEqual([['w', 'z'], ['x', 'y']])
+    expect(splitSides('balanced', [P('w', 0), P('x', 1), P('y', 4), P('z', 5)], rank)).toEqual([
+      ['w', 'z'],
+      ['x', 'y'],
+    ])
   })
 
   it('balanced handles team sizes', () => {

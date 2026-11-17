@@ -1,4 +1,4 @@
-import type { ClubMemberView, PlannedSessionInput, PlannedSessionView, SessionSetupInput, SportId } from '@matchpoynt/shared'
+import type { ClubMemberView, FeeScheme, PlannedSessionInput, PlannedSessionView, PlanSignUp, SessionSetupInput, SportId } from '@matchpoynt/shared'
 import { sportRules } from '@matchpoynt/shared'
 import { newSessionDraft } from '@/utils/forms/sessionDraft'
 import { fromLocalInput, toLocalInput } from '@/utils/time/formatWhen'
@@ -10,6 +10,10 @@ export interface PlanDraft {
   title: string
   /** `datetime-local` value; empty for "not decided". */
   scheduledFor: string
+  /** How members get on the roster. */
+  signUp: PlanSignUp
+  /** The player cap as typed; empty for no cap. */
+  maxPlayers: string
   /** Courts, scoring, rules and matchmaking, edited with the session setup steps. `members` mirrors the picked club members. */
   setup: SessionSetupInput
 }
@@ -21,21 +25,25 @@ export const memberRow = (member: ClubMemberView, sportId: SportId) => ({
   tierId: member.tiers.find((t) => t.sportId === sportId)?.tierId ?? sportRules[sportId].tiers[0]?.id ?? '',
 })
 
-export function newPlanDraft(sportId: SportId): PlanDraft {
-  return { title: '', scheduledFor: '', setup: newSessionDraft(sportId) }
+/** A new plan, charging the club's saved fee (if it has one). */
+export function newPlanDraft(sportId: SportId, clubFee: FeeScheme | null = null): PlanDraft {
+  return { title: '', scheduledFor: '', signUp: 'approval', maxPlayers: '', setup: { ...newSessionDraft(sportId), fee: clubFee } }
 }
 
 export function draftFromPlan(plan: PlannedSessionView, members: ClubMemberView[]): PlanDraft {
   const byId = new Map(members.map((m) => [m.id, m]))
-  const { title, scheduledFor, sportId, scoring, rules, matchmaking, courts, memberIds } = plan
+  const { title, scheduledFor, sportId, scoring, rules, matchmaking, fee, courts, memberIds } = plan
   return {
     title,
     scheduledFor: toLocalInput(scheduledFor),
+    signUp: plan.signUp,
+    maxPlayers: plan.maxPlayers === null ? '' : String(plan.maxPlayers),
     setup: {
       sportId,
       scoring,
       rules,
       matchmaking,
+      fee,
       courts,
       members: memberIds.flatMap((id) => {
         const m = byId.get(id)
@@ -46,7 +54,7 @@ export function draftFromPlan(plan: PlannedSessionView, members: ClubMemberView[
 }
 
 export function planInput(draft: PlanDraft): PlannedSessionInput {
-  const { sportId, scoring, rules, matchmaking, courts, members } = draft.setup
+  const { sportId, scoring, rules, matchmaking, fee, courts, members } = draft.setup
   return {
     title: draft.title,
     scheduledFor: fromLocalInput(draft.scheduledFor),
@@ -54,7 +62,11 @@ export function planInput(draft: PlanDraft): PlannedSessionInput {
     scoring,
     rules,
     matchmaking,
+    fee,
     courts,
     memberIds: members.map((m) => m.id),
+    signUp: draft.signUp,
+    // Only turns what's typed into a number; whether it's allowed is the API's call.
+    maxPlayers: draft.maxPlayers.trim() === '' ? null : Number(draft.maxPlayers),
   }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "matchpoynt"
-version = "0.1.0"
+version = "0.5.0"
 description = "Matchpoynt desktop app for court sessions, queues and rankings"
 authors = ["Matchpoynt"]
 license = ""

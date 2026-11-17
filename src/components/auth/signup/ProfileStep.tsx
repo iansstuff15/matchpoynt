@@ -2,6 +2,8 @@ import { accountLimits, type ProfileInput } from '@matchpoynt/shared'
 import { useId } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import HandleField from '@/components/common/HandleField'
+import { useNameCheck } from '@/utils/hooks/useNameCheck'
 
 interface ProfileStepProps {
   profile: ProfileInput
@@ -9,7 +11,8 @@ interface ProfileStepProps {
 }
 
 export default function ProfileStep({ profile, onChange }: ProfileStepProps) {
-  const ids = { first: useId(), last: useId(), display: useId(), phone: useId(), city: useId() }
+  const ids = { first: useId(), last: useId(), phone: useId(), city: useId() }
+  const username = useNameCheck('username', profile.username)
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -22,22 +25,7 @@ export default function ProfileStep({ profile, onChange }: ProfileStepProps) {
           <Input id={ids.last} autoComplete="family-name" required maxLength={accountLimits.nameMaxLength} value={profile.lastName} onChange={(e) => onChange({ lastName: e.target.value })} />
         </div>
       </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor={ids.display}>Display name</Label>
-        <Input
-          id={ids.display}
-          autoComplete="nickname"
-          required
-          minLength={accountLimits.displayNameMinLength}
-          maxLength={accountLimits.displayNameMaxLength}
-          value={profile.displayName}
-          onChange={(e) => onChange({ displayName: e.target.value })}
-          aria-describedby={`${ids.display}-hint`}
-        />
-        <p id={`${ids.display}-hint`} className="text-xs text-muted-foreground">
-          Shown on courts, queues and leaderboards.
-        </p>
-      </div>
+      <HandleField label="Username" value={profile.username} onChange={(value) => onChange({ username: value })} check={username} hint="Unique to you, like @maria. It's also your name on courts, queues and leaderboards." />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor={ids.phone}>

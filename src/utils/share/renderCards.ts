@@ -1,32 +1,22 @@
 import type { ClubBadgeView, LeaderboardBadgeId, LeaderboardEntry } from '@matchpoynt/shared'
 import { badgeArt } from '@/config/badgeArt'
 import { leaderboardBadges } from '@/config/leaderboard'
-import { badgeLine, shareCard } from '@/config/shareCards'
+import { badgeLine, shareBackgrounds, shareCard } from '@/config/shareCards'
+import { color, drawHeader, fonts, imageClub, loadFonts, palette, text, toBlob, type ImageClub, type Palette } from '@/utils/share/draw'
 import { site } from '@/config/site'
-import { theme } from '@/config/theme'
 import type { BadgeShape } from '@/interfaces/BadgeArt'
 import type { ShareCard, ShareCardContext } from '@/interfaces/ShareCard'
 import type { ColorToken } from '@/types/theme'
 
 // Draws shareable images of a player's leaderboard achievements on a canvas:
-// a summary card, then one card per badge the API gave them. Colours are the
+// a summary card, then one card per badge the API gave them, on a black,
+// white or transparent background (`shareBackgrounds`). Colours are the
 // theme's tokens and the badge drawings are the same shapes as the icons.
 
 const { width: W, height: H, padding: P } = shareCard
 
-/** A theme colour as CSS (canvas accepts the tokens' oklch values). */
-const color = (token: ColorToken) => getComputedStyle(document.documentElement).getPropertyValue(`--${token}`).trim() || 'black'
-
-const fonts = { sans: theme.fonts.sans.stack, display: theme.fonts.display.stack }
-
-/** Waits for the web fonts the cards use, so text isn't drawn in a fallback. */
-async function loadFonts() {
-  await Promise.all([
-    document.fonts.load(`700 100px ${fonts.display}`),
-    document.fonts.load(`600 60px ${fonts.sans}`),
-    document.fonts.load(`500 40px ${fonts.sans}`),
-  ])
-}
+/** What each card is drawn with: the context, and the club's photo once loaded. */
+type CardInfo = ShareCardContext & { clubArt: ImageClub | null }
 
 function canvas() {
   const el = document.createElement('canvas')
@@ -37,27 +27,10 @@ function canvas() {
   return { el, ctx }
 }
 
-/** Sets a font, shrinking it until `text` fits `maxWidth`. */
-function fitFont(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number, family: string, maxWidth: number) {
-  let px = size
-  do {
-    ctx.font = `${weight} ${px}px ${family}`
-    px -= 4
-  } while (ctx.measureText(text).width > maxWidth && px > 24)
-}
-
-function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, opts: { weight: number; size: number; family: string; fill: string; align?: CanvasTextAlign; maxWidth?: number }) {
-  fitFont(ctx, value, opts.weight, opts.size, opts.family, opts.maxWidth ?? W - 2 * P)
-  ctx.fillStyle = opts.fill
-  ctx.textAlign = opts.align ?? 'center'
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillText(value, x, y)
-}
-
 /** Draws a badge's shapes (24×24 grid) centred on (x, y) at `size` px, on its light plate. */
-function drawBadge(ctx: CanvasRenderingContext2D, shapes: BadgeShape[], x: number, y: number, size: number, tint: string) {
+function drawBadge(ctx: CanvasRenderingContext2D, shapes: BadgeShape[], x: number, y: number, size: number, tint: string, plate: string) {
   ctx.save()
-  ctx.fillStyle = color('deep-foreground')
+  ctx.fillStyle = plate
   ctx.beginPath()
   ctx.arc(x, y, size * shareCard.plate, 0, Math.PI * 2)
   ctx.fill()
@@ -86,16 +59,18 @@ function drawBadge(ctx: CanvasRenderingContext2D, shapes: BadgeShape[], x: numbe
   ctx.restore()
 }
 
-/** The deep court-green stage every card is drawn on, with the brand at the top. */
-function stage(ctx: CanvasRenderingContext2D, info: ShareCardContext) {
-  const bg = ctx.createLinearGradient(0, 0, 0, H)
-  bg.addColorStop(0, color('deep'))
-  bg.addColorStop(1, color('deep-strong'))
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, W, H)
-  text(ctx, site.name.toUpperCase(), P, P + 30, { weight: 600, size: 34, family: fonts.sans, fill: color('deep-muted'), align: 'left' })
-  text(ctx, info.sportName, W - P, P + 30, { weight: 500, size: 34, family: fonts.sans, fill: color('deep-muted'), align: 'right', maxWidth: W / 2 - P })
-  text(ctx, info.footer, W / 2, H - P + 10, { weight: 500, size: 30, family: fonts.sans, fill: color('deep-muted') })
+/** The card's background (dark stage, white, or none for a transparent image), with the logo and the club at the top. */
+function stage(ctx: CanvasRenderingContext2D, info: ShareCardContext & { clubArt: ImageClub | null }, pal: Palette) {
+  const colours = shareBackgrounds[info.background].stage
+  if (colours) {
+    const bg = ctx.createLinearGradient(0, 0, 0, H)
+    bg.addColorStop(0, color(colours[0]))
+    bg.addColorStop(1, color(colours[1]))
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+  }
+  drawHeader(ctx, { sportName: info.sportName, club: info.clubArt }, pal)
+  text(ctx, info.footer, W / 2, H - P + 10, { family: fonts.sans, fill: pal.muted, shadow: pal.shadow, weight: 500, size: 30 })
 }
 
 /** A soft round glow in a colour, behind a drawing. */
@@ -112,25 +87,23 @@ function glow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: numbe
   ctx.restore()
 }
 
-const toBlob = (el: HTMLCanvasElement) =>
-  new Promise<Blob>((resolve, reject) => el.toBlob((b) => (b ? resolve(b) : reject(new Error("The image couldn't be created."))), shareCard.type))
-
 const record = (e: LeaderboardEntry) => `#${e.rank} · ${e.wins}–${e.losses}`
 
 /** One badge: its drawing on a glow, its name, what earned it, and the player. */
-async function badgeCard(e: LeaderboardEntry, badge: LeaderboardBadgeId, info: ShareCardContext): Promise<Blob> {
+async function badgeCard(e: LeaderboardEntry, badge: LeaderboardBadgeId, info: CardInfo): Promise<Blob> {
   const { el, ctx } = canvas()
   const { label, color: tone } = leaderboardBadges[badge]
   const tint = color(tone)
-  stage(ctx, info)
+  const pal = palette(info)
+  stage(ctx, info, pal)
   const cy = H * 0.38
   glow(ctx, W / 2, cy, shareCard.glowRadius, tint)
-  drawBadge(ctx, badgeArt[badge], W / 2, cy, shareCard.iconSize, tint)
+  drawBadge(ctx, badgeArt[badge], W / 2, cy, shareCard.iconSize, tint, pal.plate)
   const title = badge === 'hot-streak' ? `${label} · ${e.streak}` : label
-  text(ctx, title, W / 2, H * 0.67, { weight: 700, size: 112, family: fonts.display, fill: color('deep-foreground') })
-  text(ctx, badgeLine[badge](e, info), W / 2, H * 0.67 + 84, { weight: 600, size: 50, family: fonts.sans, fill: color('deep-muted') })
-  text(ctx, e.name, W / 2, H * 0.84, { weight: 700, size: 72, family: fonts.display, fill: color('deep-foreground') })
-  text(ctx, record(e), W / 2, H * 0.84 + 64, { weight: 500, size: 40, family: fonts.sans, fill: color('deep-muted') })
+  text(ctx, title, W / 2, H * 0.67, { weight: 700, size: 112, family: fonts.display, fill: pal.ink, shadow: pal.shadow })
+  text(ctx, badgeLine[badge](e, info), W / 2, H * 0.67 + 84, { weight: 600, size: 50, family: fonts.sans, fill: pal.muted, shadow: pal.shadow })
+  text(ctx, e.name, W / 2, H * 0.84, { weight: 700, size: 72, family: fonts.display, fill: pal.ink, shadow: pal.shadow })
+  text(ctx, record(e), W / 2, H * 0.84 + 64, { weight: 500, size: 40, family: fonts.sans, fill: pal.muted, shadow: pal.shadow })
   return toBlob(el)
 }
 
@@ -147,15 +120,16 @@ async function loadIcon(url: string): Promise<HTMLImageElement | null> {
 }
 
 /** One club badge: its icon on a light plate, its name, its conditions, and the player. */
-async function clubBadgeCard(e: LeaderboardEntry, badge: ClubBadgeView, info: ShareCardContext): Promise<Blob> {
+async function clubBadgeCard(e: LeaderboardEntry, badge: ClubBadgeView, info: CardInfo): Promise<Blob> {
   const { el, ctx } = canvas()
-  stage(ctx, info)
+  const pal = palette(info)
+  stage(ctx, info, pal)
   const cy = H * 0.36
   const r = shareCard.iconSize / 2
   const tint = color('primary')
   glow(ctx, W / 2, cy, shareCard.glowRadius, tint)
   ctx.save()
-  ctx.fillStyle = color('card')
+  ctx.fillStyle = pal.plate
   ctx.beginPath()
   ctx.arc(W / 2, cy, r + 18, 0, Math.PI * 2)
   ctx.fill()
@@ -173,23 +147,24 @@ async function clubBadgeCard(e: LeaderboardEntry, badge: ClubBadgeView, info: Sh
     text(ctx, badge.name.slice(0, 1).toUpperCase(), W / 2, cy + 60, { weight: 700, size: 180, family: fonts.display, fill: tint })
   }
   ctx.restore()
-  text(ctx, badge.name, W / 2, H * 0.67, { weight: 700, size: 112, family: fonts.display, fill: color('deep-foreground'), maxWidth: W - 2 * P })
-  text(ctx, badge.summary, W / 2, H * 0.67 + 84, { weight: 600, size: 44, family: fonts.sans, fill: color('deep-muted'), maxWidth: W - 2 * P })
-  text(ctx, e.name, W / 2, H * 0.84, { weight: 700, size: 72, family: fonts.display, fill: color('deep-foreground') })
-  text(ctx, record(e), W / 2, H * 0.84 + 64, { weight: 500, size: 40, family: fonts.sans, fill: color('deep-muted') })
+  text(ctx, badge.name, W / 2, H * 0.67, { weight: 700, size: 112, family: fonts.display, fill: pal.ink, shadow: pal.shadow, maxWidth: W - 2 * P })
+  text(ctx, badge.summary, W / 2, H * 0.67 + 84, { weight: 600, size: 44, family: fonts.sans, fill: pal.muted, shadow: pal.shadow, maxWidth: W - 2 * P })
+  text(ctx, e.name, W / 2, H * 0.84, { weight: 700, size: 72, family: fonts.display, fill: pal.ink, shadow: pal.shadow })
+  text(ctx, record(e), W / 2, H * 0.84 + 64, { weight: 500, size: 40, family: fonts.sans, fill: pal.muted, shadow: pal.shadow })
   return toBlob(el)
 }
 
 const placeColor: Record<number, ColorToken> = { 1: 'gold', 2: 'silver', 3: 'bronze' }
 
 /** The player's card: their place, record, points and every badge they hold. */
-async function summaryCard(e: LeaderboardEntry, info: ShareCardContext): Promise<Blob> {
+async function summaryCard(e: LeaderboardEntry, info: CardInfo): Promise<Blob> {
   const { el, ctx } = canvas()
-  stage(ctx, info)
-  const place = color(placeColor[e.rank] ?? 'deep-foreground')
+  const pal = palette(info)
+  stage(ctx, info, pal)
+  const place = placeColor[e.rank] ? color(placeColor[e.rank]!) : pal.ink
   glow(ctx, W / 2, H * 0.3, shareCard.glowRadius, place)
-  text(ctx, `#${e.rank}`, W / 2, H * 0.36, { weight: 700, size: 300, family: fonts.display, fill: place })
-  text(ctx, e.name, W / 2, H * 0.5, { weight: 700, size: 96, family: fonts.display, fill: color('deep-foreground') })
+  text(ctx, `#${e.rank}`, W / 2, H * 0.36, { weight: 700, size: 300, family: fonts.display, fill: place, shadow: pal.shadow })
+  text(ctx, e.name, W / 2, H * 0.5, { weight: 700, size: 96, family: fonts.display, fill: pal.ink, shadow: pal.shadow })
 
   const diff = e.pointsFor - e.pointsAgainst
   const stats = [
@@ -201,8 +176,8 @@ async function summaryCard(e: LeaderboardEntry, info: ShareCardContext): Promise
   const col = (W - 2 * P) / stats.length
   stats.forEach(([value, label], i) => {
     const x = P + col * i + col / 2
-    text(ctx, value, x, H * 0.62, { weight: 700, size: 84, family: fonts.display, fill: color('deep-foreground'), maxWidth: col - 16 })
-    text(ctx, label, x, H * 0.62 + 50, { weight: 500, size: 32, family: fonts.sans, fill: color('deep-muted'), maxWidth: col - 16 })
+    text(ctx, value, x, H * 0.62, { weight: 700, size: 84, family: fonts.display, fill: pal.ink, shadow: pal.shadow, maxWidth: col - 16 })
+    text(ctx, label, x, H * 0.62 + 50, { weight: 500, size: 32, family: fonts.sans, fill: pal.muted, shadow: pal.shadow, maxWidth: col - 16 })
   })
 
   const badges = e.badges
@@ -212,7 +187,7 @@ async function summaryCard(e: LeaderboardEntry, info: ShareCardContext): Promise
     const total = badges.length * size + (badges.length - 1) * gap
     badges.forEach((b, i) => {
       const x = (W - total) / 2 + i * (size + gap) + size / 2
-      drawBadge(ctx, badgeArt[b], x, H * 0.79, size, color(leaderboardBadges[b].color))
+      drawBadge(ctx, badgeArt[b], x, H * 0.79, size, color(leaderboardBadges[b].color), pal.plate)
     })
   }
   return toBlob(el)
@@ -227,9 +202,12 @@ const slug = (value: string) =>
     .replace(/^-|-$/g, '') || 'player'
 
 /** Every card for a player: the summary first, then one per badge the API gave them, built-in then the club's own. */
-export async function renderPlayerCards(e: LeaderboardEntry, info: ShareCardContext): Promise<ShareCard[]> {
+export async function renderPlayerCards(e: LeaderboardEntry, context: ShareCardContext): Promise<ShareCard[]> {
   await loadFonts()
-  const base = `${site.name.toLowerCase()}-${slug(e.name)}`
+  // The club's photo is loaded once, for every card.
+  const info: CardInfo = { ...context, clubArt: await imageClub(context.club) }
+  // Each background gets its own file names, so a white and a black set can be saved side by side.
+  const base = `${site.name.toLowerCase()}-${slug(e.name)}${info.background === 'black' ? '' : `-${info.background}`}`
   const cards: ShareCard[] = [{ title: 'Summary', fileName: `${base}.png`, blob: await summaryCard(e, info) }]
   for (const b of e.badges) {
     cards.push({ title: leaderboardBadges[b].label, fileName: `${base}-${b}.png`, blob: await badgeCard(e, b, info) })

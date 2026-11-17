@@ -1,4 +1,4 @@
-import type { MemberSuggestionsResponse, SportId } from '@matchpoynt/shared'
+import { directoryLimits, type MemberSuggestionsResponse, type PeopleSearchResponse, type SportId } from '@matchpoynt/shared'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { api } from '@/utils/api/client'
 import { queryKeys } from '@/utils/api/queryClient'
@@ -23,6 +23,18 @@ export function useMemberSuggestions({ q, sportId, sessionId, exclude = [] }: Su
       return (await api<MemberSuggestionsResponse>('GET', `/members/suggestions?${params}`, { signal })).suggestions
     },
     enabled: enabled && q.trim().length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  })
+}
+
+/** Up to 5 people on Matchpoynt matching what was typed (name, email or @username), leaving out the club's own members. */
+export function usePeopleSearch(q: string, clubId: string, enabled: boolean) {
+  const typed = q.trim()
+  return useQuery({
+    queryKey: queryKeys.peopleSearch(typed, clubId),
+    queryFn: async ({ signal }) => (await api<PeopleSearchResponse>('GET', `/people/search?${new URLSearchParams({ q: typed, club: clubId })}`, { signal })).people,
+    enabled: enabled && typed.length >= directoryLimits.searchMinLength,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   })

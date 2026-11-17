@@ -1,7 +1,7 @@
 import type { ClubSummary } from '@matchpoynt/shared'
 import { useMatch } from 'react-router'
-import { clubTabs } from '@/config/club'
-import type { ClubTab } from '@/types/club'
+import type { ClubPage } from '@/types/club'
+import { useCanManageClubs } from '@/utils/hooks/useCanManageClubs'
 import { useClubs } from '@/utils/hooks/useClubs'
 import { useFeatures } from '@/utils/hooks/useFeatures'
 import { useMe } from '@/utils/hooks/useMe'
@@ -16,14 +16,19 @@ export function useSelectedClub() {
   const { web } = useFeatures()
   const me = useMe()
   const signedIn = web.signIn ? Boolean(me.data?.user) : true
-  const clubMatch = useMatch('/clubs/:clubId')
-  const clubs = useClubs(signedIn && web.clubs)
+  const clubMatch = useMatch('/clubs/:clubId/*')
+  // Player-only accounts run no clubs, so nothing is asked for.
+  const canManageClubs = useCanManageClubs()
+  const clubs = useClubs(signedIn && canManageClubs)
   const currentId = clubMatch?.params.clubId ?? recall('club')
   const club: ClubSummary | null = clubs.data?.find((c) => c.id === currentId) ?? null
   return { signedIn, clubs, currentId, club }
 }
 
-/** Link to one tab of a club's manager page. */
-export function clubPageHref(clubId: string, tab: ClubTab = clubTabs[0]): string {
-  return tab === clubTabs[0] ? `/clubs/${clubId}` : `/clubs/${clubId}?tab=${tab}`
+/** Link to one of a club's pages; its dashboard by default. */
+/** Where one of a club's invoices has its page: a manual invoice, or a session's invoices. */
+export const invoiceHref = (clubId: string, group: { kind: 'manual' | 'session'; id: string }) => `/clubs/${clubId}/invoices/${group.kind}/${group.id}`
+
+export function clubPageHref(clubId: string, page: ClubPage = 'dashboard'): string {
+  return page === 'dashboard' ? `/clubs/${clubId}` : `/clubs/${clubId}/${page}`
 }

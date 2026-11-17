@@ -6,7 +6,7 @@ import { loadProfile } from '@/queries/profiles'
 import { readSession, startGuest } from '@/utils/auth/session'
 import { ApiError, invalid } from '@/utils/http/errors'
 import type { AppEnv } from '@/utils/http/types'
-import { missingFields } from '@/utils/profile/rules'
+import { manageClubsBlockedReason, missingFields, runSessionsBlockedReason } from '@/utils/profile/rules'
 import { supabaseAs } from '@/utils/supabase/client'
 
 const isWrite = (method: string) => !['GET', 'HEAD', 'OPTIONS'].includes(method)
@@ -46,6 +46,34 @@ export const requireCompleteProfile: MiddlewareHandler<AppEnv> = async (c, next)
     if (missing.length) {
       throw new ApiError('forbidden', `Finish your profile first. Missing: ${missing.join(', ')}.`, { profile: missing.join(',') })
     }
+  }
+  await next()
+}
+
+/**
+ * Club management (creating clubs, their rosters, money and settings) is for
+ * accounts that run sessions. Player-only accounts are refused with how to
+ * change that; the web app hides those screens from them too.
+ */
+export const requireClubManager: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = c.get('user')
+  if (user && !user.isAnonymous && features().web.signIn) {
+    const blocked = manageClubsBlockedReason((await loadProfile(c.get('db'), user.id)).role, false)
+    if (blocked) throw new ApiError('forbidden', blocked)
+  }
+  await next()
+}
+
+/**
+ * The session board (sessions, their history and invoices, member
+ * suggestions while adding players) is for accounts that run sessions.
+ * Player-only accounts are refused with how to change that.
+ */
+export const requireSessionRunner: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = c.get('user')
+  if (user && !user.isAnonymous && features().web.signIn) {
+    const blocked = runSessionsBlockedReason((await loadProfile(c.get('db'), user.id)).role, false)
+    if (blocked) throw new ApiError('forbidden', blocked)
   }
   await next()
 }

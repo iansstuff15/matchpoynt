@@ -1,26 +1,31 @@
-import type { ClubMemberView, PlannedSessionInput, PlanStepId, SessionSetupInput } from '@matchpoynt/shared'
+import type { ClubMemberView, ClubSummary, PlannedSessionInput, PlanStepId, SessionSetupInput } from '@matchpoynt/shared'
 import { ArrowLeft, ArrowRight, CalendarPlus, Check, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import PlanDetailsStep from '@/components/club/PlanDetailsStep'
 import PlanMembersStep from '@/components/club/PlanMembersStep'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
 import CourtsStep from '@/components/session/setup/CourtsStep'
+import FeesStep from '@/components/session/setup/FeesStep'
 import MatchmakingStep from '@/components/session/setup/MatchmakingStep'
 import RulesStep from '@/components/session/setup/RulesStep'
 import ScoringStep from '@/components/session/setup/ScoringStep'
 import SetupStepNav from '@/components/session/setup/SetupStepNav'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { planSteps } from '@/config/planSetup'
+import { planSteps as allSteps } from '@/config/planSetup'
 import { ApiRequestError } from '@/utils/api/errors'
 import { memberRow, planInput, type PlanDraft } from '@/utils/forms/planDraft'
 import { lockedIds } from '@/utils/forms/sessionDraft'
+import { firstIncomplete, planStepMissing } from '@/utils/forms/requiredFields'
+import { useFeatures } from '@/utils/hooks/useFeatures'
 
 interface PlanSessionDialogProps {
   open: boolean
   /** `true` edits an existing plan. */
   editing: boolean
   initial: PlanDraft
+  /** The club it's planned in: its saved fee is offered on the Fees step. */
+  club: ClubSummary
   members: ClubMemberView[]
   pending: boolean
   /** The last failed save. The API decides what's valid. */
@@ -31,7 +36,7 @@ interface PlanSessionDialogProps {
 
 type FormProps = Omit<PlanSessionDialogProps, 'open' | 'onOpenChange'> & { onCancel: () => void }
 
-const stepIds = new Set<string>(planSteps.map((s) => s.id))
+const stepIds = new Set<string>(allSteps.map((s) => s.id))
 const noLocks = lockedIds(null)
 
 /** Splits a server error into per-step messages. */
@@ -44,7 +49,9 @@ function stepErrors(error: unknown) {
 }
 
 /** Draft state lives here, so it resets every time the dialog opens. */
-function PlanForm({ editing, initial, members, pending, error, onSubmit, onCancel }: FormProps) {
+function PlanForm({ editing, initial, club, members, pending, error, onSubmit, onCancel }: FormProps) {
+  const { web } = useFeatures()
+  const planSteps = allSteps.filter((s) => !s.feature || web[s.feature])
   const [draft, setDraft] = useState(initial)
   const [stepId, setStepId] = useState<PlanStepId>('details')
   const errors = stepErrors(error)
@@ -76,6 +83,9 @@ function PlanForm({ editing, initial, members, pending, error, onSubmit, onCance
           : { ...setup, members: setup.members.flatMap((m) => (byId.has(m.id) ? [memberRow(byId.get(m.id)!, setup.sportId)] : [])) },
     }))
   const stepProps = { setup: draft.setup, onChange: setSetup }
+  // What this step still needs before Next; a new plan can't skip ahead past it.
+  const missing = planStepMissing(step.id, draft)
+  const lockedAfter = editing ? null : firstIncomplete(planSteps, (id) => planStepMissing(id, draft))
   const submit = () => onSubmit(planInput(draft))
 
   return (
@@ -88,7 +98,7 @@ function PlanForm({ editing, initial, members, pending, error, onSubmit, onCance
       </DialogHeader>
 
       <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[11rem_1fr]">
-        <SetupStepNav steps={planSteps} current={step.id} errors={errors} onSelect={setStepId} />
+        <SetupStepNav steps={planSteps} current={step.id} errors={errors} lockedAfter={lockedAfter} onSelect={setStepId} />
         <section aria-labelledby="plan-step-title" className="min-h-0 overflow-y-auto pr-1">
           <h3 id="plan-step-title" className="font-display text-lg font-semibold">
             {step.label}
@@ -103,9 +113,15 @@ function PlanForm({ editing, initial, members, pending, error, onSubmit, onCance
           {step.id === 'scoring' && <ScoringStep {...stepProps} />}
           {step.id === 'rules' && <RulesStep {...stepProps} />}
           {step.id === 'matchmaking' && <MatchmakingStep {...stepProps} />}
+          {step.id === 'fees' && <FeesStep {...stepProps} club={club} />}
         </section>
       </div>
 
+      {missing && (
+        <p role="status" className="text-right text-sm text-muted-foreground">
+          {missing}
+        </p>
+      )}
       <DialogFooter className="gap-2 sm:justify-between">
         {editing ? (
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -118,12 +134,12 @@ function PlanForm({ editing, initial, members, pending, error, onSubmit, onCance
           </Button>
         )}
         {editing || isLast ? (
-          <Button type="button" onClick={submit} disabled={pending}>
+          <Button type="button" onClick={submit} disabled={pending || (editing ? missing !== null : lockedAfter !== null)}>
             {pending ? <LoaderCircle className="animate-spin" /> : editing ? <Check /> : <CalendarPlus />}
             {editing ? 'Save changes' : 'Save plan'}
           </Button>
         ) : (
-          <Button type="button" onClick={() => go(1)}>
+          <Button type="button" onClick={() => go(1)} disabled={missing !== null}>
             Next
             <ArrowRight />
           </Button>

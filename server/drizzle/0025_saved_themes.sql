@@ -1,0 +1,1 @@
+ALTER TABLE "clubs" ADD COLUMN "saved_themes" jsonb DEFAULT '[]'::jsonb NOT NULL;

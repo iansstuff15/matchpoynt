@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import LogoMark from '@/components/brand/LogoMark'
 import { webNavigation } from '@/config/navigation'
 import { site } from '@/config/site'
 import { sportList } from '@/config/sports'
@@ -6,7 +7,7 @@ import { useNavigation } from '@/utils/hooks/useNavigation'
 
 const year = new Date().getFullYear()
 
-/** Dusk footer with the big wordmark. Navigation without icons. */
+/** Dusk footer with the big logo. Navigation without icons. */
 export default function SiteFooter() {
   const nav = useNavigation(webNavigation)
   return (
@@ -14,7 +15,7 @@ export default function SiteFooter() {
       <div className="container-page grid gap-12 pt-24 pb-10">
         <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="font-display text-[clamp(4rem,12vw,9rem)] leading-[0.85] font-bold tracking-[-0.05em]">{site.name}</p>
+            <LogoMark title={site.name} className="w-[clamp(10rem,30vw,22rem)] text-deep-foreground" />
             <p className="mt-3 text-deep-muted">{site.tagline}</p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 sm:gap-12">

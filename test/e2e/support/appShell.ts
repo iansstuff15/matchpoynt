@@ -7,16 +7,17 @@ export const sidebar = (page: Page) => page.locator('[data-slot="sidebar"][data-
 /** The sidebar's page links. */
 export const appNav = (page: Page) => page.getByRole('navigation', { name: 'App' })
 
-/** Opens a page in the app shell (not bare /app, whose setup dialog hides the shell) and waits until it has loaded and the sidebar is there. */
+/** The bottom tab bar on phones (website and app shell). */
+export const tabBar = (page: Page) => page.getByRole('navigation', { name: 'Tabs' })
+
+/** Opens a page in the app shell (not bare /app, whose setup dialog hides the shell) and waits until it has loaded and the sidebar (or, on a phone, the tab bar) is there. */
 export async function openApp(page: Page, path: string) {
   await gotoReady(page, path)
-  await expect(appNav(page).or(page.getByRole('button', { name: 'Open navigation' }))).toBeVisible()
+  await expect(appNav(page).or(tabBar(page))).toBeVisible()
 }
 
-/** /app with no session opens setup on its own; close it to reach the shell behind. */
-export async function closeSetup(page: Page) {
-  const setup = page.getByRole('dialog', { name: 'Set up your session' })
-  await expect(setup).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(setup).toBeHidden()
+/** /app with no session shows the empty board (setup never opens by itself). */
+export async function expectEmptyBoard(page: Page) {
+  await expect(page.getByRole('button', { name: /Set up (a )?session|New session/ }).first()).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Set up your session' })).toHaveCount(0)
 }

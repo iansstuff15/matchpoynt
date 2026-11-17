@@ -33,6 +33,9 @@ export function themeToCss(theme: Theme, motion: Motion): string {
     'gp-duration-slow': motion.durations.slow,
     'gp-loop-flicker': motion.loops.flicker,
     'gp-loop-ember': motion.loops.ember,
+    'gp-loop-arch-bob': motion.loops.archBob,
+    'gp-loop-cta-pulse': motion.loops.ctaPulse,
+    'gp-loop-loading-bar': motion.loops.loadingBar,
     'gp-ease-out': motion.easings.out,
     'gp-ease-in-out': motion.easings.inOut,
   })

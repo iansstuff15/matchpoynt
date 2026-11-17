@@ -7,8 +7,8 @@ import { authPhotos } from '@/config/authPhotos'
 export default function ForgotPasswordPage() {
   return (
     <AuthLayout photo={authPhotos.recovery}>
-      <PageMeta title="Forgot password" description="Get a link to reset your Matchpoynt password." />
-      <AuthCard title="Forgot password" description="Enter your account email and we'll send a link to choose a new password.">
+      <PageMeta title="Forgot password" description="Forgot your Matchpoynt password? Get a link by email to choose a new one." />
+      <AuthCard title="Forgot your password?" description="Enter your email or username and we'll email you a link to choose a new one.">
         <ForgotPasswordForm />
       </AuthCard>
     </AuthLayout>

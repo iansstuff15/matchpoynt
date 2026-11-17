@@ -1,0 +1,42 @@
+Here are ideas for the player side that aren't built yet. Each is a short line; the bold ones are the ones I'd do first.
+
+**On the night**
+1. **"You're up next" notifications**: a web push or email when you're one match from court, or your court opens.
+2. **Self check-in from Playing now**: check in when you arrive (or by geofence) instead of scanning the QR.
+3. **Pause / break**: mark yourself "on a break" so the queue skips you for a while, decided by the API.
+4. **Preferred partners and avoid list**: soft requests the matchmaking may honour.
+5. **Score confirmation**: both sides confirm or dispute a result from their phones.
+6. **Live court view for spectators**: a public board for family and friends watching.
+
+**Your record**
+7. **Head-to-head**: your record against or with a given player, and your best partners and toughest opponents.
+8. **Form and trends**: win rate over time, last 10 matches, longest streak, points per game, per sport.
+9. **Personal bests and milestones**: 100th match, longest rally win, first tournament win, shown as cards you can share.
+10. **Season or year in review**: a shareable recap ("your 2026 on court").
+11. **Rankings across clubs**: a per-sport rating (Elo-style) that moves with results, shown on your profile.
+
+**Badges and collection**
+12. **Badges still to earn**: progress bars toward each club's badges ("2 of 3 wins").
+13. **Showcase**: pin your favourite badges to your profile header.
+14. **Rarity**: how many players hold each badge.
+
+**Social**
+15. **Friends' activity feed**: who played, who earned what, friends' sessions tonight.
+16. **Invite friends to a session**: ask your friends to come to a club's planned session.
+17. **Public profile page** (`/u/<username>`): record, badges and clubs, with privacy settings.
+18. **Kudos or reactions** on a friend's results or badges.
+19. **Chat or announcements** per club or session (club owner to members).
+
+**Planning and money**
+20. **Calendar of upcoming sessions** across your clubs, with RSVP ("I'm coming") and .ics export.
+21. **Your invoices**: what you owe across clubs, with payment links or a "mark as sent" option.
+22. **Waitlist for full sessions**, with automatic promotion.
+23. **Availability**: tell your clubs which nights you can usually play.
+
+**Account and comfort**
+24. **Notification settings** for which emails and pushes you get.
+25. **Install as an app (PWA)**, with home-screen badges for "you're up".
+26. **Privacy controls**: hide your record or badges from non-friends.
+27. **Multi-sport tier self-assessment**, plus a request for a club to verify your tier.
+
+My top five for impact are **#1, #20, #7, #12 and #21**. They cover the biggest player pain points: knowing when to play, knowing when sessions are, rivalry, progress, and paying.

@@ -1,24 +1,24 @@
-import type { ClubBadgeView, ClubMemberView } from '@matchpoynt/shared'
+import type { ClubMemberView, ClubView } from '@matchpoynt/shared'
 import { UserPlus, Users } from 'lucide-react'
 import { useState } from 'react'
 import InviteMemberDialog from '@/components/club/InviteMemberDialog'
 import MemberDialog from '@/components/club/MemberDialog'
 import MemberTable from '@/components/club/MemberTable'
+import JoinRequestsCard from '@/components/club/JoinRequestsCard'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import type { useClubActions } from '@/utils/hooks/useClubs'
 import { useFeatures } from '@/utils/hooks/useFeatures'
 
 interface ClubMembersPanelProps {
-  clubName: string
-  members: ClubMemberView[]
-  /** The club's badges: members show the career badges they've earned. */
-  badges: ClubBadgeView[]
+  view: ClubView
   actions: ReturnType<typeof useClubActions>
 }
 
-/** Members tab: the roster, adding, editing and removing members. */
-export default function ClubMembersPanel({ clubName, members, badges, actions }: ClubMembersPanelProps) {
+/** Members page: people asking to join, then the roster: adding (or inviting people on Matchpoynt), editing and removing members. */
+export default function ClubMembersPanel({ view, actions }: ClubMembersPanelProps) {
+  const { club, members, badges } = view
+  const clubName = club.name
   const { addMember, updateMember, removeMember, sendInvite, cancelInvite } = actions
   const { web } = useFeatures()
   const [inviting, setInviting] = useState<ClubMemberView | null>(null)
@@ -45,6 +45,8 @@ export default function ClubMembersPanel({ clubName, members, badges, actions }:
           Add member
         </Button>
       </div>
+
+      {web.clubDirectory && view.joinRequests.length > 0 && <JoinRequestsCard requests={view.joinRequests} actions={actions} />}
 
       {members.length === 0 ? (
         <Empty className="border">
@@ -82,8 +84,9 @@ export default function ClubMembersPanel({ clubName, members, badges, actions }:
       />
 
       <MemberDialog
+        clubId={club.id}
         open={editing !== null}
-        initial={editing === 'new' || editing === null ? null : { name: editing.name, contact: editing.contact, tiers: editing.tiers }}
+        initial={editing === 'new' || editing === null ? null : { name: editing.name, contact: editing.contact, tiers: editing.tiers, role: editing.role }}
         pending={save.isPending}
         error={save.error}
         onOpenChange={(next) => !next && setEditing(null)}

@@ -2,9 +2,10 @@ import { Outlet, useLocation } from 'react-router'
 import ConnectionBanner from '@/components/feedback/ConnectionBanner'
 import SiteFooter from '@/components/layout/site/SiteFooter'
 import SiteHeader from '@/components/layout/site/SiteHeader'
+import SiteTabBar from '@/components/layout/site/SiteTabBar'
 import { cn } from '@/utils/cn'
 
-/** Website shell: floating header, page, dusk footer. The home hero runs under the header; other pages start below it. */
+/** Website shell: floating header, page, dusk footer, and on phones a tab bar at the bottom. The home hero runs under the header; other pages start below it. */
 export default function SiteLayout() {
   const home = useLocation().pathname === '/'
   return (
@@ -17,6 +18,7 @@ export default function SiteLayout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <SiteTabBar />
     </div>
   )
 }

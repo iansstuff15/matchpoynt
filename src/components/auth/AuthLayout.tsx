@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
+import LogoMark from '@/components/brand/LogoMark'
 import { Link } from 'react-router'
+import { homePath } from '@/utils/platform'
 import PhotoCredit from '@/components/auth/PhotoCredit'
 import ConnectionBanner from '@/components/feedback/ConnectionBanner'
 import { site } from '@/config/site'
@@ -34,9 +36,8 @@ export default function AuthLayout({ photo, children }: AuthLayoutProps) {
       <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/60 to-transparent" aria-hidden />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
-        <Link to="/" className="inline-flex items-center gap-2 font-display text-lg font-bold text-white" aria-label={`${site.name} home`}>
-          <img src="/favicon.svg" alt="" width={28} height={28} className="size-7" />
-          {site.name}
+        <Link to={homePath()} className="inline-flex items-center text-white" aria-label={`${site.name} home`} title={`${site.name} home`}>
+          <LogoMark className="h-8 w-auto" />
         </Link>
       </header>
 

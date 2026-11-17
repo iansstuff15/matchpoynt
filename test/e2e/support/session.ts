@@ -10,6 +10,8 @@ export interface SetupOptions {
   players: NewPlayer[]
   /** Turn on "Fill courts automatically" on the Rules step. */
   autoFill?: boolean
+  /** Fills in the Fees step (no fee when left out). */
+  fees?: (dialog: Locator) => Promise<void>
 }
 
 /** The setup or settings dialog. */
@@ -38,8 +40,8 @@ export async function addPlayer(scope: Locator, player: NewPlayer, button: 'Add 
   await form.getByRole('button', { name: button }).click()
 }
 
-/** Walks the five setup steps from "New session" (/app?new=1, which works whatever else exists) and starts the session; resolves once its board has loaded. */
-export async function setUpSession(page: Page, { players, autoFill = false }: SetupOptions) {
+/** Walks the six setup steps from "New session" (/app?new=1, which works whatever else exists) and starts the session; resolves once its board has loaded. */
+export async function setUpSession(page: Page, { players, autoFill = false, fees }: SetupOptions) {
   await gotoReady(page, '/app?new=1')
   const dialog = setupDialog(page)
   await expect(dialog).toBeVisible()
@@ -63,6 +65,10 @@ export async function setUpSession(page: Page, { players, autoFill = false }: Se
   await dialog.getByRole('button', { name: 'Next' }).click()
 
   await expect(dialog.getByRole('heading', { name: 'Matchmaking' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Next' }).click()
+
+  await expect(dialog.getByRole('heading', { name: 'Fees' })).toBeVisible()
+  await fees?.(dialog)
   await dialog.getByRole('button', { name: 'Start session' }).click()
 
   await expect(page).toHaveURL(/\/app\/[0-9a-f-]{36}$/)
@@ -119,6 +125,19 @@ export async function openLeaderboard(page: Page) {
 export async function openManagement(page: Page) {
   await page.getByRole('tab', { name: 'Management' }).click()
   await pageReady(page)
+}
+
+/** Picks a fee on the Fees step (setup, plan or club card): its kind, currency, and the amounts its kind asks for. */
+export async function chooseFee(scope: Locator, fee: { kind: 'Fixed' | 'Per game' | 'Base price + per game'; currency?: string; base?: string; perGame?: string }) {
+  // A radio's name is its title then its description, and "Per game" is also inside "Base price + per game".
+  await scope.getByRole('radio', { name: new RegExp(`^${fee.kind.replace(/[+]/g, '\\+')}`) }).check()
+  if (fee.currency) {
+    await scope.getByRole('combobox', { name: 'Currency' }).click()
+    await scope.page().getByRole('option', { name: new RegExp(`^${fee.currency} ·`) }).click()
+    await expect(scope.getByRole('combobox', { name: 'Currency' })).toContainText(fee.currency)
+  }
+  if (fee.base !== undefined) await scope.getByLabel(fee.kind === 'Fixed' ? 'Fee per player' : 'Base price', { exact: true }).fill(fee.base)
+  if (fee.perGame !== undefined) await scope.getByLabel('Price per game', { exact: true }).fill(fee.perGame)
 }
 
 /** Finishes the session from the board's header (confirmed first) and waits for its "ended" page. */

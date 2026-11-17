@@ -1,19 +1,22 @@
 import type { ActiveSessionsResponse, CheckInLinkResponse, EndedSessionResponse, EndedSessionsResponse, LatestEndedSessionResponse, TournamentPublishResponse, LeaderboardView, PublishResponse, SessionView } from '@matchpoynt/shared'
 import { Hono, type Context } from 'hono'
-import { limits } from '@/config/limits'
 import type { EngineContext, SessionState } from '@/interfaces/SessionState'
 import { engineContext } from '@/utils/session/context'
+import { viewerUsername } from '@/queries/profiles'
+import { loadClubRow } from '@/queries/clubs'
+import { mediaUrl } from '@/utils/club/media'
 import { loadBadgeRows, loadClubHistory, toBadgeView } from '@/queries/clubBadges'
-import { awardClubBadges, careerTotals } from '@/utils/club/badges'
+import { careerTotals } from '@/utils/club/badges'
 import { deleteSession, endSession, ensureCheckInSlug, listEndedSessions, loadSessionClubId, listActiveSessions, loadEndedSession, loadLatestEndedSession, loadResults, loadSession, saveCancelledMatch, saveRestartedSession, saveSession, setPublicSlug, setTournamentSlug } from '@/queries/sessions'
 import { ApiError, conflict, invalid, notFound } from '@/utils/http/errors'
 import { features } from '@/config/features'
 import { requireFeature } from '@/utils/http/feature'
-import { body, currentUser, expectedVersion, requireCompleteProfile, requireUser, resolveUser } from '@/utils/http/middleware'
+import { body, currentUser, expectedVersion, requireCompleteProfile, requireSessionRunner, requireUser, resolveUser } from '@/utils/http/middleware'
 import type { AppEnv } from '@/utils/http/types'
-import { addCourt, addPlayer, endBlockedReason, assignPlayer, cancelMatch, checkInPlayer, finishMatch, openMatchFor, removeCourt, removePlayer, restartMatch, restartSession, settleCheckIns, startMatch, unassignPlayer } from '@/utils/session/engine'
+import { addCourt, addPlayer, endBlockedReason, assignPlayer, cancelMatch, checkInPlayer, finishMatch, openMatchFor, removeCourt, removePlayer, restartMatch, restartSession, setPlayerBreak, settleCheckIns, startMatch, unassignPlayer } from '@/utils/session/engine'
 import { checkInUrl } from '@/utils/session/checkIn'
-import { computeLeaderboard, computeSpotlight, toMatchResult } from '@/utils/session/leaderboard'
+import { sessionInvoices } from '@/utils/fees/invoices'
+import { leaderboardView } from '@/utils/session/leaderboardView'
 import { newPublicSlug, publicUrl } from '@/utils/session/publish'
 import { applySetup, createSession } from '@/utils/session/setup'
 import { toSessionView } from '@/utils/session/view'
@@ -30,6 +33,7 @@ import {
   tournamentMatchParam,
   tournamentSetupSchema,
   uuidParam,
+  breakSchema,
 } from '@/utils/validation/schemas'
 
 
@@ -58,6 +62,7 @@ const signInExpired = () => new ApiError('unauthorized', 'Your sign-in has expir
 
 export const sessionRoutes = new Hono<AppEnv>()
   .use(resolveUser)
+  .use(requireSessionRunner)
   // A guest with no user yet simply has no session. With sign-in on, no user
   // means the sign-in expired: say so, so the web app sends them to sign in.
   .get('/active', async (c) => {
@@ -118,14 +123,15 @@ export const sessionRoutes = new Hono<AppEnv>()
     if (!(await deleteSession(c.get('db'), idParam(c, 'id')))) throw notFound('Session not found. It may already have been deleted.')
     return c.body(null, 204)
   })
-  // Only once every match is finished, so no result is lost.
+  // Only once every match is finished, so no result is lost. The session's fee
+  // turns into an invoice per player in the same transaction (none while fees are off).
   .post('/:id/end', async (c) => {
     const db = c.get('db')
     const state = await loadSession(db, idParam(c, 'id'))
     if (!state) throw notFound('Session not found.')
     const blocked = endBlockedReason(state)
     if (blocked) throw conflict(blocked)
-    await endSession(db, state.id, expectedVersion(c))
+    await endSession(db, state.id, expectedVersion(c), sessionInvoices(state, engineContext()))
     return c.body(null, 204)
   })
   .post('/:id/players', async (c) => {
@@ -133,6 +139,11 @@ export const sessionRoutes = new Hono<AppEnv>()
     return mutate(c, (state, ctx) => addPlayer(state, input, ctx))
   })
   .post('/:id/players/:playerId/check-in', (c) => mutate(c, (state, ctx) => checkInPlayer(state, idParam(c, 'playerId'), ctx)))
+  // Starts or ends a player's break; players on a break sit out the queue.
+  .put('/:id/players/:playerId/break', async (c) => {
+    const { onBreak } = await body(c, breakSchema)
+    return mutate(c, (state, ctx) => setPlayerBreak(state, idParam(c, 'playerId'), onBreak, ctx))
+  })
   .delete('/:id/players/:playerId', (c) => mutate(c, (state) => removePlayer(state, idParam(c, 'playerId'))))
   .post('/:id/courts', (c) => mutate(c, (state, ctx) => addCourt(state, ctx)))
   // Removes a court with no match on it (save_session deletes courts left out of the save).
@@ -236,19 +247,15 @@ export const sessionRoutes = new Hono<AppEnv>()
     const state = await loadSession(db, id)
     if (!state) throw notFound('Session not found.')
     const { players, matches } = await loadResults(db, id)
-    const names = new Map(players.map((p) => [p.id, p.name]))
-    // Badges of the club that runs the session, if any (planned in a club and club badges on).
-    const clubId = features().web.clubs && features().web.clubBadges ? await loadSessionClubId(db, id) : null
-    const [badgeRows, history] = clubId ? await Promise.all([loadBadgeRows(db, clubId), loadClubHistory(db, clubId)]) : [[], null]
-    const clubBadges = badgeRows.map(toBadgeView)
-    const entries = awardClubBadges(computeLeaderboard(players, matches), clubBadges, history ? careerTotals(history) : new Map())
-    const response: LeaderboardView = {
-      sessionId: id,
-      spotlight: computeSpotlight(entries, matches),
-      entries,
-      recentMatches: matches.slice(0, limits.recentMatches).map((m) => toMatchResult(m, names)),
-      clubBadges,
-    }
+    // The club that runs the session, if any (planned in a club): its name and photo, and its badges while club badges are on.
+    const clubId = features().web.clubs ? await loadSessionClubId(db, id) : null
+    const badgesOn = Boolean(clubId) && features().web.clubBadges
+    const [clubRow, badgeRows, history] = clubId
+      ? await Promise.all([loadClubRow(db, clubId), badgesOn ? loadBadgeRows(db, clubId) : [], badgesOn ? loadClubHistory(db, clubId) : null])
+      : [null, [], null]
+    const viewer = await viewerUsername(db, c.get('user'))
+    const club = clubRow && { name: clubRow.name, avatarUrl: mediaUrl(clubRow.avatar_path) }
+    const response: LeaderboardView = leaderboardView(id, players, matches, badgeRows.map(toBadgeView), history ? careerTotals(history) : new Map(), viewer, club)
     return c.json(response)
   })
 

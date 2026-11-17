@@ -1,15 +1,9 @@
-import { ChevronsUpDown, KeyRound, LogOut } from 'lucide-react'
-import { Link, useNavigate } from 'react-router'
+import { ChevronsUpDown } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import AccountMenuItems from '@/components/layout/app/AccountMenuItems'
 import ClubAvatar from '@/components/club/ClubAvatar'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { notifyDone } from '@/utils/feedback/notify'
@@ -17,8 +11,8 @@ import { useAppConfig, useFeatures } from '@/utils/hooks/useFeatures'
 import { useMe, useSignOut } from '@/utils/hooks/useMe'
 
 /**
- * The signed-in account at the top of the app sidebar: avatar, name and
- * email, opening a menu to set a password or sign out. In the icon rail
+ * The signed-in account at the top of the app sidebar: photo, name and
+ * @username, opening a menu to their profile, setting a password or signing out. In the icon rail
  * only the avatar shows.
  */
 export default function AccountMenu() {
@@ -44,7 +38,7 @@ export default function AccountMenu() {
   }
   if (!data?.user) return null
 
-  const { email, displayName } = data.user
+  const { email, displayName, username, avatarUrl } = data.user
   const name = displayName ?? email ?? 'Your account'
 
   return (
@@ -60,31 +54,20 @@ export default function AccountMenu() {
                 tooltip={name}
                 aria-label={`Account: ${name}`}
               >
-                <ClubAvatar name={name} url={null} className="size-10" />
+                <ClubAvatar name={name} url={avatarUrl} className="size-10" />
                 <span className="sidebar-label">
                   <span className="truncate font-semibold text-sidebar-accent-foreground">{name}</span>
-                  {email && displayName && <span className="sidebar-caption">{email}</span>}
+                  {(username || (email && displayName)) && <span className="sidebar-caption">{username ? `@${username}` : email}</span>}
                 </span>
                 <ChevronsUpDown className="ml-auto opacity-60" aria-hidden />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent side={isMobile ? 'bottom' : 'right'} align="start" className="w-64">
-              <DropdownMenuLabel className="grid font-normal">
-                <span className="truncate font-medium">{name}</span>
-                {email && <span className="truncate text-xs text-muted-foreground">{email}</span>}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {web.signInEmail && (
-                <DropdownMenuItem asChild>
-                  <Link to="/account/password" title="Set or change the password for your account">
-                    <KeyRound aria-hidden />
-                    Set a password
-                  </Link>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                disabled={signOut.isPending}
-                onSelect={() =>
+              <AccountMenuItems
+                name={name}
+                email={email}
+                signingOut={signOut.isPending}
+                onSignOut={() =>
                   signOut.mutate(undefined, {
                     onSuccess: () => {
                       notifyDone('Signed out')
@@ -94,10 +77,7 @@ export default function AccountMenu() {
                     onError: () => setOpen(true),
                   })
                 }
-              >
-                <LogOut aria-hidden />
-                Sign out
-              </DropdownMenuItem>
+              />
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>

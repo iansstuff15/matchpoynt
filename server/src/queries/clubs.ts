@@ -1,10 +1,18 @@
+import { paymentQrsOf, paymentQrViews, type StoredPaymentQr } from '@/utils/club/paymentQrs'
 import type {
   ClubInfoInput,
   ClubMemberInput,
+  ClubMemberRole,
   ClubMemberView,
   ClubSessionView,
   ClubSummary,
+  ClubJoiningInput,
   ClubThemeInput,
+  JoinRequestView,
+  SavedClubTheme,
+  SessionRequestView,
+  SocialLink,
+  FeeScheme,
   MemberTier,
   PhotoPosition,
   PlannedSessionInput,
@@ -12,12 +20,16 @@ import type {
   SessionSettings,
   SportId,
 } from '@matchpoynt/shared'
-import { clubLimits } from '@matchpoynt/shared'
+import { pageSizes, sportRules } from '@matchpoynt/shared'
+import { features } from '@/config/features'
 import type { SessionState } from '@/interfaces/SessionState'
 import { savePayload } from '@/queries/sessions'
 import type { Json, Tables } from '@/types/database'
-import { positionOf, themeOf } from '@/utils/club/appearance'
-import { clubFolder, mediaBucket, mediaUrl } from '@/utils/club/media'
+import { colorsOf, positionOf, savedThemesOf, themeOf } from '@/utils/club/appearance'
+import { feeSummary } from '@/utils/fees/rules'
+import { joiningOf } from '@/utils/club/joining'
+import { socialLinksOf } from '@/utils/social/links'
+import { clubFolder, mediaBucket, mediaUrl, profileMediaUrl } from '@/utils/club/media'
 import type { SuggestionCandidate } from '@/utils/club/suggest'
 import { dbFail, storageFail } from '@/utils/supabase/errors'
 import type { Db } from '@/utils/supabase/client'
@@ -42,29 +54,42 @@ async function counts(db: Db, clubIds: string[]) {
   return { members: tally(members.data), plans: tally(plans.data) }
 }
 
-export const toSummary = (row: ClubRow, members: number, plannedSessions: number): ClubSummary => ({
-  id: row.id,
-  name: row.name,
-  description: row.description,
-  avatarUrl: mediaUrl(row.avatar_path),
-  coverUrl: mediaUrl(row.cover_path),
-  avatarPosition: positionOf(row.avatar_position),
-  coverPosition: positionOf(row.cover_position),
-  theme: themeOf(row.theme as unknown as ClubThemeInput | null),
-  members,
-  plannedSessions,
-})
+const clubFee = (row: ClubRow): FeeScheme | null => (features().web.fees ? ((row.fee as unknown as FeeScheme | null) ?? null) : null)
 
-/** The caller's clubs, by name. */
-export async function listClubs(db: Db): Promise<ClubSummary[]> {
-  const { data, error } = await db.from('clubs').select('*').order('name')
+export function toSummary(row: ClubRow, members: number, plannedSessions: number): ClubSummary {
+  const fee = clubFee(row)
+  return {
+    id: row.id,
+    name: row.name,
+    handle: row.handle,
+    socialLinks: socialLinksOf(row.social_links),
+    joining: joiningOf(row),
+    description: row.description,
+    avatarUrl: mediaUrl(row.avatar_path),
+    coverUrl: mediaUrl(row.cover_path),
+    avatarPosition: positionOf(row.avatar_position),
+    coverPosition: positionOf(row.cover_position),
+    theme: themeOf(colorsOf(row.theme)),
+    savedThemes: savedThemesOf(row.saved_themes),
+    paymentQrs: features().web.fees ? paymentQrViews(paymentQrsOf(row.payment_qrs)) : [],
+    fee,
+    feeSummary: fee && feeSummary(fee),
+    members,
+    plannedSessions,
+  }
+}
+
+/** The caller's clubs, by name, a page at a time (`offset`), with where the next page starts. */
+export async function listClubs(db: Db, offset = 0): Promise<{ clubs: ClubSummary[]; nextOffset: number | null }> {
+  const { data, error } = await db.from('clubs').select('*').order('name').order('id').range(offset, offset + pageSizes.clubs)
   dbFail(error)
-  const rows = data ?? []
+  const more = (data ?? []).length > pageSizes.clubs
+  const rows = (data ?? []).slice(0, pageSizes.clubs)
   const n = await counts(
     db,
     rows.map((r) => r.id),
   )
-  return rows.map((r) => toSummary(r, n.members.get(r.id) ?? 0, n.plans.get(r.id) ?? 0))
+  return { clubs: rows.map((r) => toSummary(r, n.members.get(r.id) ?? 0, n.plans.get(r.id) ?? 0)), nextOffset: more ? offset + pageSizes.clubs : null }
 }
 
 export async function countClubs(db: Db): Promise<number> {
@@ -84,14 +109,20 @@ export async function loadClubSummary(db: Db, row: ClubRow): Promise<ClubSummary
   return toSummary(row, n.members.get(row.id) ?? 0, n.plans.get(row.id) ?? 0)
 }
 
-export async function createClub(db: Db, id: string, info: ClubInfoInput): Promise<ClubRow> {
-  const { data, error } = await db.from('clubs').insert({ id, name: info.name, description: info.description }).select('*').single()
+/** A new club, with its colours and fee scheme when the step-by-step form set them (null keeps the defaults). */
+export async function createClub(db: Db, id: string, info: ClubInfoInput, theme: ClubThemeInput | null = null, fee: FeeScheme | null = null): Promise<ClubRow> {
+  const colors = theme && (theme.accent || theme.sidebar || theme.page) ? (theme as unknown as Json) : null
+  const { data, error } = await db
+    .from('clubs')
+    .insert({ id, name: info.name, handle: info.handle, description: info.description, theme: colors, fee: fee as unknown as Json })
+    .select('*')
+    .single()
   dbFail(error)
   return data!
 }
 
 export async function updateClubInfo(db: Db, id: string, info: ClubInfoInput): Promise<void> {
-  const { error } = await db.from('clubs').update({ name: info.name, description: info.description, updated_at: new Date().toISOString() }).eq('id', id)
+  const { error } = await db.from('clubs').update({ name: info.name, handle: info.handle, description: info.description, updated_at: new Date().toISOString() }).eq('id', id)
   dbFail(error)
 }
 
@@ -110,8 +141,49 @@ export async function setClubPosition(db: Db, id: string, column: 'avatar_positi
 }
 
 export async function setClubTheme(db: Db, id: string, theme: ClubThemeInput): Promise<void> {
-  const stored = theme.accent || theme.sidebar ? (theme as unknown as Json) : null
+  const stored = theme.accent || theme.sidebar || theme.page ? (theme as unknown as Json) : null
   const { error } = await db.from('clubs').update({ theme: stored, updated_at: new Date().toISOString() }).eq('id', id)
+  dbFail(error)
+}
+
+/** Replaces the club's saved themes (the route works out the new list with `withSavedTheme`). */
+export async function setPaymentQrs(db: Db, id: string, qrs: StoredPaymentQr[]): Promise<void> {
+  const { error } = await db
+    .from('clubs')
+    .update({ payment_qrs: qrs as unknown as Json, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  dbFail(error)
+}
+
+export async function setSavedThemes(db: Db, id: string, themes: SavedClubTheme[]): Promise<void> {
+  const { error } = await db
+    .from('clubs')
+    .update({ saved_themes: themes as unknown as Json, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  dbFail(error)
+}
+
+/** Whether another club already uses this handle (club_handle_taken: every club, not just the caller's). `clubId` is the club it's for, which doesn't count. */
+export async function clubHandleTaken(db: Db, handle: string, clubId: string | null): Promise<boolean> {
+  const { data, error } = await db.rpc('club_handle_taken', { p_handle: handle, p_club_id: clubId })
+  dbFail(error)
+  return Boolean(data)
+}
+
+export async function setClubSocialLinks(db: Db, id: string, links: SocialLink[]): Promise<void> {
+  const { error } = await db
+    .from('clubs')
+    .update({ social_links: links as unknown as Json, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  dbFail(error)
+}
+
+/** Saves the club's fee scheme (`null` for none), offered when setting up its sessions. */
+export async function setClubFee(db: Db, id: string, fee: FeeScheme | null): Promise<void> {
+  const { error } = await db
+    .from('clubs')
+    .update({ fee: fee as unknown as Json, updated_at: new Date().toISOString() })
+    .eq('id', id)
   dbFail(error)
 }
 
@@ -138,21 +210,25 @@ export async function loadMembers(db: Db, clubId: string): Promise<ClubMemberVie
     dbFail(sports.error)
     for (const s of sports.data ?? []) tiers.set(s.member_id, [...(tiers.get(s.member_id) ?? []), { sportId: s.sport_id as SportId, tierId: s.tier_id }])
   }
-  const invites = new Map<string, { status: 'pending' | 'accepted'; sentAt: string }>()
+  const invites = new Map<string, { status: 'pending' | 'accepted'; sentAt: string; via: 'email' | 'app' }>()
   if (members.length) {
     const { data: rows, error: inviteError } = await db
       .from('club_invites')
-      .select('member_id, status, created_at')
+      .select('member_id, status, created_at, user_id')
       .eq('club_id', clubId)
       .neq('status', 'revoked')
       .order('created_at', { ascending: false })
     dbFail(inviteError)
-    for (const r of rows ?? []) if (!invites.has(r.member_id)) invites.set(r.member_id, { status: r.status as 'pending' | 'accepted', sentAt: r.created_at })
+    for (const r of rows ?? []) if (!invites.has(r.member_id)) invites.set(r.member_id, { status: r.status as 'pending' | 'accepted', sentAt: r.created_at, via: r.user_id ? 'app' : 'email' })
   }
+  const cards = members.some((m) => m.user_id) ? await memberCards(db, clubId) : new Map<string, MemberCard>()
   return members.map((m) => ({
     id: m.id,
     name: m.name,
+    role: m.role as ClubMemberRole,
     contact: m.contact,
+    username: cards.get(m.id)?.username ?? null,
+    avatarUrl: profileMediaUrl(cards.get(m.id)?.avatar_path ?? null),
     // Career badges are added by the route (utils/club/badges.ts), which has the club's history.
     badges: [],
     email: m.email,
@@ -162,6 +238,20 @@ export async function loadMembers(db: Db, clubId: string): Promise<ClubMemberVie
   }))
 }
 
+interface MemberCard {
+  member_id: string
+  username: string | null
+  email: string | null
+  avatar_path: string | null
+}
+
+/** The accounts the club's members have linked (username, email, photo), by member id (club_member_cards: the owner only). */
+async function memberCards(db: Db, clubId: string): Promise<Map<string, MemberCard>> {
+  const { data, error } = await db.rpc('club_member_cards', { p_club_id: clubId })
+  dbFail(error)
+  return new Map(((data as unknown as MemberCard[] | null) ?? []).map((c) => [c.member_id, c]))
+}
+
 /** Adds or edits a member and their tiers in one transaction (save_club_member). */
 export async function saveMember(db: Db, clubId: string, id: string, member: ClubMemberInput): Promise<void> {
   const { error } = await db.rpc('save_club_member', {
@@ -169,6 +259,14 @@ export async function saveMember(db: Db, clubId: string, id: string, member: Clu
     p_sports: member.tiers.map((t) => ({ sport_id: t.sportId, tier_id: t.tierId })),
   })
   dbFail(error)
+  if (member.role) await setMemberRole(db, clubId, id, member.role)
+}
+
+/** Gives a member a role in the club (saved with the member; save_club_member predates roles). */
+async function setMemberRole(db: Db, clubId: string, id: string, role: ClubMemberRole): Promise<boolean> {
+  const { data, error } = await db.from('club_members').update({ role }).eq('club_id', clubId).eq('id', id).select('id')
+  dbFail(error)
+  return Boolean(data?.length)
 }
 
 export async function deleteMember(db: Db, clubId: string, id: string): Promise<boolean> {
@@ -191,7 +289,10 @@ const toPlan = (r: PlanRow): PlannedSessionView => ({
   matchmaking: r.matchmaking as SessionSettings['matchmaking'],
   courts: r.courts as unknown as PlannedSessionView['courts'],
   memberIds: r.member_ids,
+  fee: features().web.fees ? ((r.fee as unknown as FeeScheme | null) ?? null) : null,
   coverUrl: mediaUrl(r.cover_path),
+  signUp: r.sign_up === 'open' ? 'open' : 'approval',
+  maxPlayers: r.max_players,
 })
 
 /** Plans soonest first; undated ones last. */
@@ -223,6 +324,10 @@ const planColumns = (plan: PlannedSessionInput) => ({
   matchmaking: plan.matchmaking,
   courts: plan.courts.map((c) => ({ id: c.id, label: c.label })),
   member_ids: plan.memberIds,
+  sign_up: plan.signUp ?? 'approval',
+  max_players: plan.maxPlayers ?? null,
+  // With fees switched off, a plan's saved fee is left alone.
+  ...(features().web.fees && { fee: plan.fee as unknown as Json }),
 })
 
 export async function createPlan(db: Db, clubId: string, id: string, plan: PlannedSessionInput): Promise<void> {
@@ -259,15 +364,15 @@ export async function startPlannedSession(db: Db, planId: string, state: Session
 // The club's sessions
 
 /** Sessions run from the club's plans, newest first. */
-export async function loadClubSessions(db: Db, clubId: string): Promise<ClubSessionView[]> {
-  const { data, error } = await db
-    .from('sessions')
-    .select('*')
-    .eq('club_id', clubId)
-    .order('created_at', { ascending: false })
-    .limit(clubLimits.recentSessions)
+/** Sessions the club has run (or is running), newest first, a page at a time: those started before `before`. */
+export async function loadClubSessions(db: Db, clubId: string, before: string | null = null): Promise<{ sessions: ClubSessionView[]; nextBefore: string | null }> {
+  let query = db.from('sessions').select('*').eq('club_id', clubId)
+  if (before) query = query.lt('created_at', before)
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(pageSizes.clubSessions + 1)
   dbFail(error)
-  return (data ?? []).map((r) => ({
+  const rows = (data ?? []).slice(0, pageSizes.clubSessions)
+  const nextBefore = (data ?? []).length > pageSizes.clubSessions ? rows.at(-1)!.created_at : null
+  const sessions = rows.map((r): ClubSessionView => ({
     id: r.id,
     title: r.title,
     sportId: r.sport_id as SportId,
@@ -276,6 +381,7 @@ export async function loadClubSessions(db: Db, clubId: string): Promise<ClubSess
     endedAt: r.ended_at,
     coverUrl: mediaUrl(r.cover_path),
   }))
+  return { sessions, nextBefore }
 }
 
 /** Photo paths still in use by any of the club's sessions, so deleting a plan never deletes a session's cover. */
@@ -312,10 +418,20 @@ export async function listClubMedia(db: Db, ownerId: string, clubId: string): Pr
  */
 export async function findMembers(db: Db, query: string, sportId: SportId, max: number): Promise<SuggestionCandidate[]> {
   // Escape LIKE wildcards so "%" and "_" match themselves.
-  const pattern = `%${query.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
-  const { data, error } = await db.from('club_members').select('id, name, club_id, clubs(name)').ilike('name', pattern).limit(max)
+  const safe = query.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+  const handle = safe.replace(/^@/, '').toLowerCase()
+  // By name or the email on file; @usernames come from the members' linked accounts (club_member_cards).
+  const { data, error } = await db.from('club_members').select('id, name, email, club_id, user_id, clubs(name)').or(`name.ilike.%${safe}%,email.ilike.${safe}%`).limit(max)
   dbFail(error)
-  const rows = (data ?? []) as unknown as { id: string; name: string; club_id: string; clubs: { name: string } | null }[]
+  const clubIds = await db.from('clubs').select('id')
+  dbFail(clubIds.error)
+  const cards = new Map<string, MemberCard>()
+  for (const club of clubIds.data ?? []) for (const [id, card] of await memberCards(db, club.id)) cards.set(id, card)
+  const byUsername = [...cards.values()].filter((c) => c.username?.startsWith(handle)).map((c) => c.member_id)
+  const extra = byUsername.filter((id) => !(data ?? []).some((r) => r.id === id))
+  const more = extra.length ? await db.from('club_members').select('id, name, email, club_id, user_id, clubs(name)').in('id', extra) : { data: [], error: null }
+  dbFail(more.error)
+  const rows = [...(data ?? []), ...(more.data ?? [])] as unknown as { id: string; name: string; email: string | null; club_id: string; clubs: { name: string } | null }[]
   if (!rows.length) return []
   const tiers = await db
     .from('club_member_sports')
@@ -327,7 +443,19 @@ export async function findMembers(db: Db, query: string, sportId: SportId, max: 
     )
   dbFail(tiers.error)
   const tierOf = new Map((tiers.data ?? []).map((t) => [t.member_id, t.tier_id]))
-  return rows.map((r) => ({ memberId: r.id, name: r.name, tierId: tierOf.get(r.id) ?? null, clubName: r.clubs?.name ?? '', clubId: r.club_id }))
+  return rows.map((r) => {
+    const card = cards.get(r.id)
+    return {
+      memberId: r.id,
+      name: r.name,
+      tierId: tierOf.get(r.id) ?? null,
+      clubName: r.clubs?.name ?? '',
+      clubId: r.club_id,
+      username: card?.username ?? null,
+      email: card?.email ?? r.email,
+      avatarUrl: profileMediaUrl(card?.avatar_path ?? null),
+    }
+  })
 }
 
 /** A session's club and its active players' names, for suggestions. `null` if it isn't the caller's. */
@@ -343,6 +471,14 @@ export async function sessionForSuggestions(db: Db, sessionId: string): Promise<
 // Invites
 
 /** Opens a new invite for a member (cancelling any still open) and records their email. */
+/** An invite sent in the app to someone picked from the member search: they accept it from their Clubs page. Cancels any still open. */
+export async function createAppInvite(db: Db, clubId: string, memberId: string, userId: string, token: string): Promise<void> {
+  const revoke = await db.from('club_invites').update({ status: 'revoked' }).eq('member_id', memberId).eq('status', 'pending')
+  dbFail(revoke.error)
+  const { error } = await db.from('club_invites').insert({ id: crypto.randomUUID(), club_id: clubId, member_id: memberId, user_id: userId, token })
+  dbFail(error)
+}
+
 export async function createInvite(db: Db, clubId: string, memberId: string, email: string, token: string): Promise<void> {
   const revoke = await db.from('club_invites').update({ status: 'revoked' }).eq('member_id', memberId).eq('status', 'pending')
   dbFail(revoke.error)
@@ -381,4 +517,87 @@ export async function acceptInvite(db: Db, token: string): Promise<string> {
   const { data, error } = await db.rpc('accept_club_invite', { p_token: token })
   dbFail(error)
   return data ?? ''
+}
+
+// Joining
+
+/** Saves how people join the club and the welcome they get. */
+export async function setClubJoining(db: Db, id: string, joining: ClubJoiningInput): Promise<void> {
+  const { error } = await db
+    .from('clubs')
+    .update({ join_approval: joining.approval, welcome_message: joining.welcomeMessage, welcome_links: joining.welcomeLinks as unknown as Json, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  dbFail(error)
+}
+
+/** People asking to join the club, oldest first. */
+export async function loadJoinRequests(db: Db, clubId: string): Promise<JoinRequestView[]> {
+  const { data, error } = await db.from('club_join_requests').select('*').eq('club_id', clubId).eq('status', 'pending').order('created_at')
+  dbFail(error)
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    name: r.name,
+    username: r.name,
+    avatarUrl: profileMediaUrl(r.avatar_path),
+    avatarPosition: positionOf(null),
+    tiers: r.tiers as unknown as MemberTier[],
+    requestedAt: r.created_at,
+  }))
+}
+
+/** Approves or declines a request: approving adds them to the roster, linked to their account. `false` when there's no such open request. */
+export async function decideJoinRequest(db: Db, clubId: string, requestId: string, approve: boolean): Promise<boolean> {
+  const { data: request, error } = await db.from('club_join_requests').select('*').eq('club_id', clubId).eq('id', requestId).eq('status', 'pending').maybeSingle()
+  dbFail(error)
+  if (!request) return false
+  if (approve) {
+    const memberId = crypto.randomUUID()
+    await saveMember(db, clubId, memberId, { name: request.name, contact: null, tiers: request.tiers as unknown as MemberTier[] })
+    const link = await db.from('club_members').update({ user_id: request.user_id }).eq('id', memberId)
+    dbFail(link.error)
+  }
+  const decided = await db.from('club_join_requests').update({ status: approve ? 'approved' : 'declined', decided_at: new Date().toISOString() }).eq('id', requestId)
+  dbFail(decided.error)
+  return true
+}
+
+/** Members asking to join the club's sessions, oldest first, with who and which session. */
+export async function loadSessionRequests(db: Db, clubId: string): Promise<SessionRequestView[]> {
+  const { data, error } = await db.from('session_join_requests').select('*').eq('club_id', clubId).eq('status', 'pending').order('created_at')
+  dbFail(error)
+  const rows = data ?? []
+  if (!rows.length) return []
+  const [members, plans, sessions] = await Promise.all([
+    db.from('club_members').select('id, name').in('id', rows.map((r) => r.member_id)),
+    db.from('planned_sessions').select('id, title').in('id', rows.flatMap((r) => (r.plan_id ? [r.plan_id] : []))),
+    db.from('sessions').select('id, title, sport_id').in('id', rows.flatMap((r) => (r.session_id ? [r.session_id] : []))),
+  ])
+  dbFail(members.error ?? plans.error ?? sessions.error)
+  const memberName = new Map((members.data ?? []).map((m) => [m.id, m.name]))
+  const label = new Map<string, string>([
+    ...(plans.data ?? []).map((p): [string, string] => [p.id, p.title]),
+    ...(sessions.data ?? []).map((s): [string, string] => [s.id, s.title ?? `${sportRules[s.sport_id as SportId]?.name ?? 'Court'} session`]),
+  ])
+  return rows.map((r) => ({
+    id: r.id,
+    memberId: r.member_id,
+    memberName: memberName.get(r.member_id) ?? 'A member',
+    planId: r.plan_id,
+    sessionId: r.session_id,
+    sessionLabel: label.get(r.plan_id ?? r.session_id ?? '') ?? 'A session',
+    requestedAt: r.created_at,
+  }))
+}
+
+/** One open session request, or `null`. */
+export async function loadSessionRequest(db: Db, clubId: string, requestId: string) {
+  const { data, error } = await db.from('session_join_requests').select('*').eq('club_id', clubId).eq('id', requestId).eq('status', 'pending').maybeSingle()
+  dbFail(error)
+  return data
+}
+
+export async function closeSessionRequest(db: Db, requestId: string, approved: boolean): Promise<void> {
+  const { error } = await db.from('session_join_requests').update({ status: approved ? 'approved' : 'declined', decided_at: new Date().toISOString() }).eq('id', requestId)
+  dbFail(error)
 }

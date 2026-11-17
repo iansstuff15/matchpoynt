@@ -1,5 +1,5 @@
 import { photoPositions, type PhotoPosition } from '@matchpoynt/shared'
-import { Check, LoaderCircle, Move, RotateCcw, ZoomIn } from 'lucide-react'
+import { Check, LoaderCircle, Move, RotateCcw, ZoomIn, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import PositionedPhoto from '@/components/club/PositionedPhoto'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
@@ -10,11 +10,14 @@ import { cn } from '@/utils/cn'
 interface PhotoAlignerProps {
   url: string
   label: string
-  shape: 'cover' | 'avatar'
+  /** The frame: a cover's band, an avatar's circle, or a square (QR codes). */
+  shape: 'cover' | 'avatar' | 'square'
   position: PhotoPosition
   pending: boolean
   error: unknown
   onSave: (position: PhotoPosition) => void
+  /** The save button, when it does more than save the position (e.g. uploading a new QR code, which can be saved as it is). */
+  save?: { label: string; icon: LucideIcon; whenUnchanged: boolean; disabled?: boolean }
 }
 
 const clamp = (n: number) => Math.min(100, Math.max(0, n))
@@ -25,7 +28,7 @@ const keyStep = 1
  * Aligns a photo in its frame: drag it (or use the arrow keys) and zoom with
  * the slider. Only shapes the draft: the API checks and saves the position.
  */
-export default function PhotoAligner({ url, label, shape, position, pending, error, onSave }: PhotoAlignerProps) {
+export default function PhotoAligner({ url, label, shape, position, pending, error, onSave, save }: PhotoAlignerProps) {
   const [draft, setDraft] = useState(position)
   const frame = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; start: PhotoPosition } | null>(null)
@@ -68,7 +71,7 @@ export default function PhotoAligner({ url, label, shape, position, pending, err
         aria-label={`${label} position`}
         aria-valuetext={`${Math.round(draft.x)}% across, ${Math.round(draft.y)}% down`}
         aria-valuenow={Math.round(draft.x)}
-        className={cn('photo-aligner', shape === 'cover' ? 'photo-aligner-cover' : 'photo-aligner-avatar')}
+        className={cn('photo-aligner', { cover: 'photo-aligner-cover', avatar: 'photo-aligner-avatar', square: 'photo-aligner-square' }[shape])}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => (drag.current = null)}
@@ -95,9 +98,9 @@ export default function PhotoAligner({ url, label, shape, position, pending, err
           <RotateCcw />
           Centre
         </Button>
-        <Button type="button" disabled={pending || !changed} onClick={() => onSave(draft)}>
-          {pending ? <LoaderCircle className="animate-spin" /> : <Check />}
-          Save position
+        <Button type="button" disabled={pending || save?.disabled || (!changed && !save?.whenUnchanged)} onClick={() => onSave(draft)}>
+          {pending ? <LoaderCircle className="animate-spin" /> : save ? <save.icon /> : <Check />}
+          {save?.label ?? 'Save position'}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
+import { planSignUpModes } from '@matchpoynt/shared'
 import { clubImages, type PlannedSessionView } from '@matchpoynt/shared'
-import { CalendarDays, ImageMinus, ImageUp, LandPlot, LoaderCircle, Pencil, Play, Trash2, Users } from 'lucide-react'
+import { CalendarCheck, CalendarDays, ImageMinus, ImageUp, LandPlot, LoaderCircle, Pencil, Play, Trash2, Users } from 'lucide-react'
 import { useRef } from 'react'
 import CoverCard from '@/components/club/CoverCard'
 import ConfirmButton from '@/components/common/ConfirmButton'
@@ -51,6 +52,11 @@ export default function PlannedSessionCard({ plan, starting, coverBusy, deleting
         <p className="flex items-center gap-2">
           <Users className="size-4 shrink-0" aria-hidden />
           {plural(plan.memberIds.length, 'member')} on the roster
+          {plan.maxPlayers !== null && ` of ${plan.maxPlayers}`}
+        </p>
+        <p className="flex items-center gap-2 text-muted-foreground">
+          <CalendarCheck className="size-4 shrink-0" aria-hidden />
+          {planSignUpModes[plan.signUp].label}
         </p>
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">

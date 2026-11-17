@@ -2,7 +2,7 @@ import { sportRules, tournamentLimits, type TournamentSetupInput } from '@matchp
 import type { EngineContext, SessionState } from '@/interfaces/SessionState'
 import type { TournamentMatchState, TournamentState } from '@/interfaces/TournamentState'
 import { conflict, invalid, notFound } from '@/utils/http/errors'
-import { autoFill, isCheckedIn, tidyLineups } from '@/utils/session/engine'
+import { autoFill, isCheckedIn, isOnBreak, tidyLineups } from '@/utils/session/engine'
 import { playersPerSide, tierRank } from '@/utils/session/rules'
 import { doubleElimination, poolMatches, rotatingRounds, roundRobin, singleElimination } from '@/utils/tournament/bracket'
 import { startTournamentMatchOn } from '@/utils/tournament/play'
@@ -71,6 +71,7 @@ export function createTournament(state: SessionState, input: TournamentSetupInpu
     const p = state.players[id]
     if (!p?.active) throw invalid('Some players are no longer in this session. Reload and pick again.', { entrants: 'Unknown player' })
     if (!isCheckedIn(p)) throw invalid(`${p.name} hasn't checked in yet. Check them in, or leave them out.`, { entrants: 'Not checked in' })
+    if (isOnBreak(p)) throw invalid(`${p.name} is on a break. End their break, or leave them out.`, { entrants: 'On a break' })
     return p
   })
 
@@ -175,6 +176,7 @@ export function setTournamentCompetitors(state: SessionState, playerIds: string[
     const player = state.players[id]
     if (!player?.active) throw notFound('Some players are no longer in this session. Reload and pick again.')
     if (!isCheckedIn(player)) throw invalid(`${player.name} hasn't checked in yet. Check them in first.`, { entrants: 'Not checked in' })
+    if (isOnBreak(player) && !t.playerIds.includes(id)) throw invalid(`${player.name} is on a break. End their break first.`, { entrants: 'On a break' })
     if (player.status === 'playing' && !t.playerIds.includes(id)) throw conflict(`${player.name} is on court. Finish their match first.`)
   }
 

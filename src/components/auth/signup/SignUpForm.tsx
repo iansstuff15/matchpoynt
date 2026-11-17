@@ -13,6 +13,7 @@ import { signUpSteps } from '@/config/signUp'
 import { ApiRequestError } from '@/utils/api/errors'
 import { useSaveProfile, useSignUp } from '@/utils/hooks/useAccount'
 import { useAcceptInvite } from '@/utils/hooks/useInvites'
+import { signUpStepMissing } from '@/utils/forms/requiredFields'
 
 interface SignUpFormProps {
   /**
@@ -24,6 +25,10 @@ interface SignUpFormProps {
   initialProfile: ProfileInput
   /** `invite` mode: the invite's token and the email it was sent to. */
   invite?: { token: string; email: string }
+  /** Page to come back to: after confirming a new account's email, or once the profile is complete. */
+  next?: string
+  /** Replaces going on to `next` once a profile is complete, e.g. to stay on a join page. */
+  onDone?: () => void
 }
 
 /** The steps the server flagged, so the form can jump back to them. */
@@ -32,7 +37,7 @@ function flaggedSteps(error: unknown): Set<SignUpStepId> {
   return new Set(error instanceof ApiRequestError ? (Object.keys(error.fields).filter((k) => ids.has(k)) as SignUpStepId[]) : [])
 }
 
-export default function SignUpForm({ mode, initialProfile, invite }: SignUpFormProps) {
+export default function SignUpForm({ mode, initialProfile, invite, next, onDone }: SignUpFormProps) {
   const navigate = useNavigate()
   const steps = mode === 'complete' ? signUpSteps.filter((s) => s.id !== 'account') : signUpSteps
   const [index, setIndex] = useState(0)
@@ -57,18 +62,21 @@ export default function SignUpForm({ mode, initialProfile, invite }: SignUpFormP
   const isLast = index === steps.length - 1
   const patchProfile = (patch: Partial<ProfileInput>) => setProfile((p) => ({ ...p, ...patch }))
 
+  // What this step still needs before Next.
+  const missing = signUpStepMissing(step.id, account, profile)
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    if (missing) return
     if (!isLast) return setIndex((i) => i + 1)
     if (mode === 'invite') {
       accept.mutate({ password: account.password, profile }, { onSuccess: (res) => navigate(res.redirectTo) })
     } else if (mode === 'sign-up') {
       signUp.mutate(
-        { email: account.email, password: account.password, profile },
-        { onSuccess: (res) => (res.confirmEmail ? setSentTo(account.email) : navigate('/app')) },
+        { email: account.email, password: account.password, profile, next },
+        { onSuccess: (res) => (res.confirmEmail ? setSentTo(account.email) : navigate(next ?? '/start')) },
       )
     } else {
-      saveProfile.mutate(profile, { onSuccess: (status) => status.complete && navigate('/app') })
+      saveProfile.mutate(profile, { onSuccess: (status) => status.complete && (onDone ? onDone() : navigate(next ?? '/start')) })
     }
   }
 
@@ -84,7 +92,7 @@ export default function SignUpForm({ mode, initialProfile, invite }: SignUpFormP
           profile is saved and waiting.
         </p>
         <Button variant="link" className="h-auto justify-start p-0" asChild>
-          <Link to="/sign-in">
+          <Link to={next ? `/sign-in?${new URLSearchParams({ next })}` : '/sign-in'}>
             <ArrowLeft />
             Back to sign in
           </Link>
@@ -117,6 +125,11 @@ export default function SignUpForm({ mode, initialProfile, invite }: SignUpFormP
         <AgreementsStep role={profile.role} acceptTerms={profile.acceptTerms} onChange={(patch) => patchProfile(patch)} />
       )}
 
+      {missing && (
+        <p role="status" className="text-right text-sm text-muted-foreground">
+          {missing}
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3">
         <Button type="button" variant="outline" className="rounded-full" onClick={() => setIndex((i) => i - 1)} disabled={index === 0}>
           <ArrowLeft />
@@ -126,7 +139,7 @@ export default function SignUpForm({ mode, initialProfile, invite }: SignUpFormP
           type="submit"
           size="lg"
           className="rounded-full px-6"
-          disabled={save.isPending || (step.id === 'sports' && profile.sports.length === 0)}
+          disabled={save.isPending || missing !== null}
         >
           {save.isPending ? <LoaderCircle className="animate-spin" /> : isLast ? <Check /> : <ArrowRight />}
           {isLast ? (mode === 'sign-up' ? 'Create account' : mode === 'invite' ? 'Join club' : 'Save profile') : 'Next'}

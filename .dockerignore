@@ -29,3 +29,4 @@ docker/**/Dockerfile
 .vscode
 .idea
 .DS_Store
+.output/

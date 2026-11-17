@@ -1,6 +1,6 @@
 import type { MemberSuggestion, SportId } from '@matchpoynt/shared'
-import { Users } from 'lucide-react'
 import { useState } from 'react'
+import PersonRow from '@/components/common/PersonRow'
 import ErrorBanner from '@/components/feedback/ErrorBanner'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
@@ -23,7 +23,8 @@ interface MemberNameFieldProps {
 }
 
 /**
- * The player-name field, suggesting club members as you type (shadcn
+ * The player-name field, suggesting up to 5 club members by name, email or
+ * @username as you type, each with their photo (shadcn
  * Command in a Popover). Enter picks the highlighted member while the list
  * is open, and submits the form otherwise.
  */
@@ -79,11 +80,7 @@ export default function MemberNameField({ id, value, sportId, sessionId, exclude
                       setFocused(false)
                     }}
                   >
-                    <Users aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {[tier(s.tierId), s.clubName].filter(Boolean).join(' · ')}
-                    </span>
+                    <PersonRow name={s.name} username={s.username} email={s.email} avatarUrl={s.avatarUrl} aside={[tier(s.tierId), s.clubName].filter(Boolean).join(' · ')} />
                   </CommandItem>
                 ))}
               </CommandGroup>

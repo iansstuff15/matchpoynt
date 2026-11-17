@@ -1,5 +1,7 @@
 import type { LeaderboardBadgeId, LeaderboardEntry } from '@matchpoynt/shared'
 import type { ShareCardContext } from '@/interfaces/ShareCard'
+import type { ColorToken } from '@/types/theme'
+import type { ShareBackground } from '@/types/leaderboard'
 
 /** Shareable images: portrait, the size social apps show best. */
 export const shareCard = {
@@ -15,6 +17,31 @@ export const shareCard = {
   plate: 0.68,
   type: 'image/png',
 } as const
+
+/** The whole leaderboard as one image: as wide as a card, as tall as its rows need, up to `maxRows` players. */
+export const leaderboardImage = {
+  width: 1080,
+  padding: 72,
+  headerHeight: 370,
+  podiumHeight: 330,
+  rowHeight: 68,
+  footerHeight: 150,
+  maxRows: 40,
+  medalRadius: 64,
+} as const
+
+/**
+ * The backgrounds a share image can have, in the order the dialog offers them,
+ * and the theme colours drawn on each: `stage` (top and bottom of its
+ * gradient; `null` draws nothing), `ink` for names and figures, `muted` for the
+ * lines under them, `plate` behind badge drawings, and `shadow` under text so
+ * it reads on any photo a transparent image is laid over.
+ */
+export const shareBackgrounds: Record<ShareBackground, { label: string; stage: [ColorToken, ColorToken] | null; ink: ColorToken; muted: ColorToken; plate: ColorToken; shadow: boolean }> = {
+  black: { label: 'Black', stage: ['deep', 'deep-strong'], ink: 'deep-foreground', muted: 'deep-muted', plate: 'deep-foreground', shadow: false },
+  white: { label: 'White', stage: ['card', 'card'], ink: 'foreground', muted: 'muted-foreground', plate: 'muted', shadow: false },
+  transparent: { label: 'Transparent', stage: null, ink: 'deep-foreground', muted: 'deep-foreground', plate: 'deep-foreground', shadow: true },
+}
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n))
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

@@ -1,4 +1,4 @@
-import { Check, Pencil, Plus } from 'lucide-react'
+import { Check, ChevronDown, Pencil, Plus } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import ClubPickerTile from '@/components/club/ClubPickerTile'
 import ClubPickerTileSkeleton from '@/components/club/ClubPickerTileSkeleton'
@@ -7,19 +7,19 @@ import ErrorBanner from '@/components/feedback/ErrorBanner'
 import PageMeta from '@/components/seo/PageMeta'
 import { Button } from '@/components/ui/button'
 import { clubSkeletonCards } from '@/config/club'
-import { useClubs } from '@/utils/hooks/useClubs'
+import { useClubPages } from '@/utils/hooks/useClubs'
 
 /**
  * The club picker, styled like a streaming service's profile screen: every
- * club as a big round avatar, "Add club", and an edit mode. `?new=1` opens
+ * club as a big round avatar (a page at a time), "Add club", and an edit mode. `?new=1` opens
  * "Add club" and `?edit=1` starts in edit mode (both from the sidebar switcher).
  */
 export default function ClubsPage() {
-  const clubs = useClubs()
+  const clubs = useClubPages()
   const [params, setParams] = useSearchParams()
   const editing = params.has('edit')
   const setEditing = (on: boolean) => setParams(on ? { edit: '1' } : {}, { replace: true })
-  const list = clubs.data ?? []
+  const list = clubs.data?.pages.flatMap((p) => p.clubs) ?? []
 
   return (
     <section aria-labelledby="clubs-title" className="club-picker">
@@ -63,6 +63,17 @@ export default function ClubsPage() {
         </ul>
       )}
 
+      {clubs.hasNextPage && (
+        <Button
+          variant="outline"
+          className="border-deep-muted/60 bg-transparent text-deep-foreground hover:bg-glass hover:text-deep-foreground"
+          disabled={clubs.isFetchingNextPage}
+          onClick={() => void clubs.fetchNextPage()}
+        >
+          <ChevronDown />
+          Show more clubs
+        </Button>
+      )}
       {list.length > 0 && (
         <Button
           variant="outline"

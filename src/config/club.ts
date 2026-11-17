@@ -19,5 +19,25 @@ export const clubPhotos = {
   cover: { label: 'Cover photo', description: 'A wide photo for the top of the club page.' },
 } as const
 
-/** The club manager page's tabs, in order; the first is the default and needs no `?tab=`. */
-export const clubTabs = ['sessions', 'members', 'badges', 'info'] as const
+/** A club's pages, in sidebar order: the dashboard (`/clubs/<id>`), then each at `/clubs/<id>/<page>`. */
+export const clubPages = ['dashboard', 'sessions', 'members', 'badges', 'feedback', 'announcements', 'invoices', 'expenses', 'billers', 'accounting'] as const
+
+/** Each page's name, for breadcrumbs and page titles. */
+export const clubPageLabels = {
+  dashboard: 'Dashboard',
+  sessions: 'Sessions',
+  members: 'Members',
+  badges: 'Badges',
+  feedback: 'Feedback',
+  announcements: 'Announcements',
+  invoices: 'Invoices',
+  expenses: 'Expenses',
+  billers: 'Billers',
+  accounting: 'Accounting',
+} as const
+
+/** The club settings dialog's groups, in its sidebar's order. */
+export const clubSettingsGroups = ['general', 'social', 'joining', 'appearance', 'fees', 'payments', 'delete'] as const
+
+/** What the Feedback page's skeleton draws while it loads. */
+export const feedbackSkeleton = { questions: 3, sessions: 2 }

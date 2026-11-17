@@ -14,6 +14,10 @@ export const board = {
   longWaitMs: 20 * 60_000,
   /** While players are still to check in, the board refreshes this often so QR check-ins appear. */
   checkInPollMs: 5000,
+  /** A club's running session refreshes this often, so breaks players start from their phones appear. */
+  clubSessionPollMs: 10_000,
+  /** A player's live view of a session (and their list of running sessions) refreshes this often. */
+  playerViewPollMs: 5000,
   /** Pixel size the check-in QR is drawn at (it scales to fit the dialog). */
   checkInQrSize: 320,
 }

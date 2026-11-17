@@ -22,6 +22,8 @@ export interface PlayerState {
   active: boolean
   /** When they checked in at the venue, in ms; `null` until then. Only checked-in players are matched. */
   checkedInAt: number | null
+  /** When they started a break, in ms; `null` (or left out) while they're not on one. Players on a break sit out the queue. */
+  breakSince?: number | null
 }
 
 export interface CourtState {

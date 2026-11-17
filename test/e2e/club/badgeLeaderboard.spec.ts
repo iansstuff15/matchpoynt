@@ -1,5 +1,5 @@
 import { createBadge } from '../support/badges'
-import { createClub, openClubTab } from '../support/club'
+import { createClub, openClubPage } from '../support/club'
 import { expect, test } from '../support/mockApi'
 import { gotoReady, pageReady } from '../support/pageReady'
 import { checkIn, courtCard, finishMatch, openLeaderboard, setUpSession, standing } from '../support/session'
@@ -13,7 +13,7 @@ test.describe('club badges on the leaderboard', () => {
     const clubId = api.clubs.idOf('Northside Rally')
     await createBadge(page, { name: 'First Blood', conditions: [{ metric: 'Wins', min: 1 }], icon: { search: 'smash', pick: 'Smash GIF' } })
     await createBadge(page, { name: 'Club Winner', scope: 'Across all club sessions', conditions: [{ metric: 'Wins', min: 1 }], icon: { search: 'crown', pick: 'Crown GIF' } })
-    await openClubTab(page, 'Members')
+    await openClubPage(page, 'Members')
     for (const name of players) {
       await page.getByRole('button', { name: 'Add member' }).click()
       const add = page.getByRole('dialog', { name: 'Add a member' })
@@ -43,7 +43,7 @@ test.describe('club badges on the leaderboard', () => {
     for (const name of losers) await expect(standing(page, name)).not.toContainText('First Blood')
 
     // On the club's Members tab, the winners now show their career badge (matched by name).
-    await gotoReady(page, `/clubs/${clubId}?tab=members`)
+    await gotoReady(page, `/clubs/${clubId}/members`)
     for (const name of winners) await expect(page.getByLabel(`${name}'s club badges`)).toBeVisible()
     for (const name of losers) await expect(page.getByLabel(`${name}'s club badges`)).toHaveCount(0)
   })

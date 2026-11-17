@@ -1,17 +1,19 @@
 import { Hono } from 'hono'
 import { env } from '@/config/env'
-import { isMediaPath, mediaBucket } from '@/utils/club/media'
+import { features } from '@/config/features'
+import { isMediaPath, isProfileMediaPath, mediaBucket } from '@/utils/club/media'
 import { notFound, unavailable } from '@/utils/http/errors'
-import { requireFeature } from '@/utils/http/feature'
 
 /**
  * Club and session photos, served same-origin so the browser never talks to
  * Supabase. The bucket is public for reads and every object name carries a
  * random UUID, so a photo can be cached for good.
  */
-export const mediaRoutes = new Hono().use(requireFeature('web', 'clubs')).get('/*', async (c) => {
+export const mediaRoutes = new Hono().get('/*', async (c) => {
   const path = c.req.path.replace(/^\/api\/media\//, '')
   if (!isMediaPath(path)) throw notFound('No such photo.')
+  // Profile photos follow sign-in; club and session photos follow clubs.
+  if (!(isProfileMediaPath(path) ? features().web.signIn : features().web.clubs)) throw notFound('Not found.')
 
   let res: Response
   try {

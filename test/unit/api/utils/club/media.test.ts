@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkBadgeIcon, checkImage, isMediaPath, mediaPath, sniffImage } from '@/utils/club/media'
+import { checkBadgeIcon, checkImage, isMediaPath, isProfileMediaPath, mediaPath, profileMediaPath, sniffImage } from '@/utils/club/media'
 
 const owner = '3f2b8c1e-9a4d-4c7b-8e21-5d6f7a8b9c0d'
 const club = '0b7d1c2e-3f4a-4b5c-8d6e-7f8091a2b3c4'
@@ -34,8 +34,17 @@ describe('media paths', () => {
     expect(isMediaPath(path)).toBe(true)
   })
 
+  it('takes a Firebase account id as the owner folder, and profile photos in it', () => {
+    const uid = 'kZ3pQ8sT1vW4xY7aB0cD2eF5gH9j'
+    expect(isMediaPath(mediaPath(uid, club, 'avatar', id))).toBe(true)
+    expect(profileMediaPath(uid, id)).toBe(`${uid}/profile/avatar-${id}.webp`)
+    expect(isMediaPath(profileMediaPath(uid, id))).toBe(true)
+    expect(isProfileMediaPath(profileMediaPath(uid, id))).toBe(true)
+    expect(isProfileMediaPath(mediaPath(uid, club, 'avatar', id))).toBe(false)
+  })
+
   it('refuses anything else', () => {
-    for (const bad of [`${owner}/${club}/../secret.jpg`, `${owner}/${club}/cover-${id}.svg`, `${owner}/cover-${id}.jpg`, `x/${club}/cover-${id}.jpg`]) {
+    for (const bad of [`${owner}/${club}/../secret.jpg`, `${owner}/${club}/cover-${id}.svg`, `${owner}/cover-${id}.jpg`, `../${club}/cover-${id}.jpg`, `${owner}/profile/cover-${id}.webp`, `${owner}/profile/avatar-${id}.jpg`]) {
       expect(isMediaPath(bad)).toBe(false)
     }
   })

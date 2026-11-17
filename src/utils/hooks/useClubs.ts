@@ -1,20 +1,28 @@
 import type {
   ClubBadgeInput,
+  ClubJoiningInput,
   ClubImageKind,
   ClubThemeInput,
   ClubInfoInput,
   ClubListResponse,
   ClubMemberInput,
+  ClubSessionsResponse,
+  ClubSummary,
   ClubView,
+  CreateClubInput,
+  FeeScheme,
   GifResult,
   PhotoPosition,
   PlannedSessionInput,
   PlannedSessionView,
+  SavedThemeInput,
+  SocialLink,
   SessionView,
 } from '@matchpoynt/shared'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { ActionFailure } from '@/interfaces/ActionFailure'
+import { localCache } from '@/config/cache'
 import { api } from '@/utils/api/client'
 import { queryKeys } from '@/utils/api/queryClient'
 import { photoLabel, planSummary } from '@/utils/feedback/clubMessages'
@@ -37,6 +45,18 @@ export function useClubs(enabled = true) {
     queryKey: queryKeys.clubs,
     queryFn: async ({ signal }) => (await api<ClubListResponse>('GET', '/clubs', { signal })).clubs,
     enabled,
+    // Kept on this device (utils/api/persistCache.ts) and fresh for a while; changes made here refresh it at once.
+    staleTime: localCache.clubStaleMs,
+  })
+}
+
+/** The club picker's list: every club the account runs, a page at a time. */
+export function useClubPages() {
+  return useInfiniteQuery({
+    queryKey: queryKeys.clubPages,
+    queryFn: ({ signal, pageParam }) => api<ClubListResponse>('GET', `/clubs?${new URLSearchParams({ offset: String(pageParam) })}`, { signal }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextOffset,
   })
 }
 
@@ -52,11 +72,11 @@ export function useClub(clubId: string, enabled = true) {
 /** Creates a club; the dialog shows its own error banner. */
 export function useCreateClub() {
   const client = useQueryClient()
-  return useMutation<ClubView, unknown, ClubInfoInput, { toastId: string | number }>({
-    mutationFn: (info) => api<ClubView>('POST', '/clubs', { body: info }),
+  return useMutation<ClubView, unknown, CreateClubInput, { toastId: string | number }>({
+    mutationFn: (club) => api<ClubView>('POST', '/clubs', { body: club }),
     onMutate: (info) => ({ toastId: notifyProgress(`Creating ${info.name.trim() || 'the club'}…`) }),
     onSuccess: (view, _vars, ctx) => {
-      notifyDone(`${view.club.name} is ready`, { id: ctx?.toastId, description: 'Add members and plan your first session.' })
+      notifyDone(`${view.club.name} is ready`, { id: ctx?.toastId, description: 'Its dashboard lists what to set up next.' })
       client.setQueryData(queryKeys.club(view.club.id), view)
       void client.invalidateQueries({ queryKey: queryKeys.clubs })
     },
@@ -87,7 +107,10 @@ export function useClubActions(clubId: string, onSessionStarted?: (session: Sess
 
   const setClub = (view: ClubView) => {
     client.setQueryData(queryKeys.club(clubId), view)
+    // The kept list gets the change at once (not only when it's fetched again), so a reload never shows the old one.
+    client.setQueryData<ClubSummary[]>(queryKeys.clubs, (list) => list?.map((c) => (c.id === view.club.id ? view.club : c)))
     void client.invalidateQueries({ queryKey: queryKeys.clubs, exact: true })
+    void client.invalidateQueries({ queryKey: queryKeys.clubPages })
   }
 
   function useTracked<V, D>(t: Tracked<V, D>) {
@@ -148,7 +171,92 @@ export function useClubActions(clubId: string, onSessionStarted?: (session: Sess
       mutationFn: (theme: ClubThemeInput) => api<ClubView>('PUT', clubPath(clubId, '/theme'), { body: theme }),
       action: () => 'save the club colours',
       progress: () => 'Saving the club colours…',
-      done: (_v, theme) => (theme.accent || theme.sidebar ? 'Club colours saved' : "Back to Matchpoynt's colours"),
+      done: (_v, theme) => (theme.accent || theme.sidebar || theme.page ? 'Club colours saved' : "Back to Matchpoynt's colours"),
+      onSuccess: setClub,
+    }),
+    saveThemeAs: useTracked({
+      scope: 'dialog',
+      mutationFn: (theme: SavedThemeInput) => api<ClubView>('POST', clubPath(clubId, '/themes'), { body: theme }),
+      action: (t) => `save the theme ${t.name.trim() || ''}`.trim(),
+      progress: (t) => `Saving the theme ${t.name.trim()}…`,
+      done: (_v, t) => `Theme saved: ${t.name.trim()}`,
+      onSuccess: setClub,
+    }),
+    deleteSavedTheme: useTracked({
+      scope: 'dialog',
+      mutationFn: ({ id }: { id: string; name: string }) => api<ClubView>('DELETE', clubPath(clubId, `/themes/${id}`)),
+      action: ({ name }) => `delete the theme ${name}`,
+      progress: ({ name }) => `Deleting the theme ${name}…`,
+      done: (_v, { name }) => `Theme deleted: ${name}`,
+      onSuccess: setClub,
+    }),
+    saveSocial: useTracked({
+      scope: 'dialog',
+      mutationFn: (links: SocialLink[]) => api<ClubView>('PUT', clubPath(clubId, '/social'), { body: { links } }),
+      action: () => "save the club's links",
+      progress: () => "Saving the club's links…",
+      done: (_v, links) => (links.length ? `Links saved: ${links.length}` : 'Links removed'),
+      onSuccess: setClub,
+    }),
+    saveJoining: useTracked({
+      scope: 'dialog',
+      mutationFn: (joining: ClubJoiningInput) => api<ClubView>('PUT', clubPath(clubId, '/joining'), { body: joining }),
+      action: () => 'save how people join',
+      progress: () => 'Saving how people join…',
+      done: (_v, joining) => (joining.approval === 'auto' ? 'People who ask now join at once' : 'You now approve each request to join'),
+      onSuccess: setClub,
+    }),
+    decideJoinRequest: useTracked({
+      scope: 'page',
+      mutationFn: ({ id, approve }: { id: string; name: string; approve: boolean }) => api<ClubView>('POST', clubPath(clubId, `/requests/${id}`), { body: { approve } }),
+      action: ({ name, approve }) => `${approve ? 'approve' : 'decline'} ${name}'s request`,
+      progress: ({ name, approve }) => `${approve ? 'Approving' : 'Declining'} ${name}…`,
+      done: (_v, { name, approve }) => (approve ? `${name} joined the club` : `${name}'s request declined`),
+      onSuccess: setClub,
+    }),
+    decideSessionRequest: useTracked({
+      scope: 'page',
+      mutationFn: ({ id, approve }: { id: string; name: string; session: string; approve: boolean }) => api<ClubView>('POST', clubPath(clubId, `/session-requests/${id}`), { body: { approve } }),
+      action: ({ name, approve }) => `${approve ? 'add' : 'decline'} ${name}`,
+      progress: ({ name, session, approve }) => (approve ? `Adding ${name} to ${session}…` : `Declining ${name}…`),
+      done: (_v, { name, session, approve }) => (approve ? `${name} is in ${session}` : `${name}'s request declined`),
+      onSuccess: setClub,
+    }),
+    addPaymentQr: useTracked({
+      scope: 'dialog',
+      mutationFn: ({ label, file, position }: { label: string; file: File; position: PhotoPosition }) => {
+        const form = imageForm(file)
+        form.append('label', label)
+        form.append('position', JSON.stringify(position))
+        return api<ClubView>('POST', clubPath(clubId, '/payment-qrs'), { form })
+      },
+      action: ({ label }) => `add the ${label.trim() || 'payment'} QR code`,
+      progress: () => 'Uploading the QR code…',
+      done: (_v, { label }) => `${label.trim()} QR code added`,
+      onSuccess: setClub,
+    }),
+    alignPaymentQr: useTracked({
+      scope: 'dialog',
+      mutationFn: ({ id, position }: { id: string; label: string; position: PhotoPosition }) => api<ClubView>('PUT', clubPath(clubId, `/payment-qrs/${encodeURIComponent(id)}/position`), { body: position }),
+      action: ({ label }) => `frame the ${label} QR code`,
+      progress: () => 'Saving the framing…',
+      done: (_v, { label }) => `${label} QR code framed`,
+      onSuccess: setClub,
+    }),
+    removePaymentQr: useTracked({
+      scope: 'dialog',
+      mutationFn: ({ id }: { id: string; label: string }) => api<ClubView>('DELETE', clubPath(clubId, `/payment-qrs/${encodeURIComponent(id)}`)),
+      action: ({ label }) => `remove the ${label} QR code`,
+      progress: () => 'Removing the QR code…',
+      done: (_v, { label }) => `${label} QR code removed`,
+      onSuccess: setClub,
+    }),
+    saveFee: useTracked({
+      scope: 'dialog',
+      mutationFn: (fee: FeeScheme | null) => api<ClubView>('PUT', clubPath(clubId, '/fee'), { body: { fee } }),
+      action: () => "save the club's fee",
+      progress: () => "Saving the club's fee…",
+      done: (view) => (view.club.feeSummary ? `Club fee saved: ${view.club.feeSummary}` : 'Club fee removed'),
       onSuccess: setClub,
     }),
     deleteClub: useTracked({
@@ -160,6 +268,7 @@ export function useClubActions(clubId: string, onSessionStarted?: (session: Sess
       onSuccess: () => {
         client.removeQueries({ queryKey: queryKeys.club(clubId) })
         void client.invalidateQueries({ queryKey: queryKeys.clubs, exact: true })
+        void client.invalidateQueries({ queryKey: queryKeys.clubPages })
       },
     }),
     addMember: useTracked({
@@ -293,4 +402,18 @@ export function useClubActions(clubId: string, onSessionStarted?: (session: Sess
   }
 
   return { ...actions, failure, clearFailure: () => setFailure(null) }
+}
+
+/**
+ * The club's sessions past the first page the club view brings: older ones,
+ * a page at a time, from where that page ended.
+ */
+export function useOlderClubSessions(clubId: string, startBefore: string | null) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.clubSessions(clubId), startBefore],
+    queryFn: ({ signal, pageParam }) => api<ClubSessionsResponse>('GET', clubPath(clubId, `/sessions?${new URLSearchParams({ before: pageParam! })}`), { signal }),
+    initialPageParam: startBefore,
+    getNextPageParam: (last) => last.nextBefore,
+    enabled: false,
+  })
 }

@@ -1,3 +1,4 @@
+import { maxPlayersProblem } from '@/utils/club/signUp'
 import {
   clubLimits,
   sportRules,
@@ -8,6 +9,8 @@ import {
   type PlanStepId,
   type SessionSetupInput,
 } from '@matchpoynt/shared'
+import { keptFee } from '@/utils/fees/rules'
+import { handleProblem, normalizeHandle } from '@/utils/social/handles'
 import { invalid } from '@/utils/http/errors'
 import { validateSetup } from '@/utils/session/setup'
 
@@ -24,11 +27,13 @@ function assertNone<K extends string>(errors: Errors<K>) {
 const blankToNull = (v: string | null) => (v?.trim() ? v.trim() : null)
 
 /** Trims a club's info and checks it. */
-export function validateClubInfo(input: ClubInfoInput): Errors<'name' | 'description'> {
-  const errors: Errors<'name' | 'description'> = {}
+export function validateClubInfo(input: ClubInfoInput): Errors<'name' | 'handle' | 'description'> {
+  const errors: Errors<'name' | 'handle' | 'description'> = {}
   const name = input.name.trim()
   if (!name) errors.name = 'Give the club a name.'
   else if (name.length > clubLimits.nameMaxLength) errors.name = `Club names can be up to ${clubLimits.nameMaxLength} characters.`
+  const handle = handleProblem(input.handle, 'handle')
+  if (handle) errors.handle = handle
   if ((input.description?.trim().length ?? 0) > clubLimits.descriptionMaxLength) {
     errors.description = `Descriptions can be up to ${clubLimits.descriptionMaxLength} characters.`
   }
@@ -37,7 +42,7 @@ export function validateClubInfo(input: ClubInfoInput): Errors<'name' | 'descrip
 
 export function cleanClubInfo(input: ClubInfoInput): ClubInfoInput {
   assertNone(validateClubInfo(input))
-  return { name: input.name.trim(), description: blankToNull(input.description) }
+  return { name: input.name.trim(), handle: normalizeHandle(input.handle), description: blankToNull(input.description) }
 }
 
 /** An account can run up to `clubLimits.maxClubs` clubs. */
@@ -65,7 +70,7 @@ export function validateMember(input: ClubMemberInput): Errors<'name' | 'contact
 
 export function cleanMember(input: ClubMemberInput): ClubMemberInput {
   assertNone(validateMember(input))
-  return { name: input.name.trim(), contact: blankToNull(input.contact), tiers: input.tiers }
+  return { name: input.name.trim(), contact: blankToNull(input.contact), tiers: input.tiers, ...(input.role && { role: input.role }) }
 }
 
 /** A club roster holds up to `clubLimits.maxMembers` people. */
@@ -84,12 +89,13 @@ export function tierFor(member: ClubMemberView, sportId: SessionSetupInput['spor
  */
 export function planToSetup(plan: PlannedSessionInput, members: ClubMemberView[]): SessionSetupInput {
   const byId = new Map(members.map((m) => [m.id, m]))
-  const { sportId, scoring, rules, matchmaking, courts } = plan
+  const { sportId, scoring, rules, matchmaking, courts, fee } = plan
   return {
     sportId,
     scoring,
     rules,
     matchmaking,
+    fee,
     courts,
     members: plan.memberIds.flatMap((id) => {
       const member = byId.get(id)
@@ -109,6 +115,8 @@ export function validatePlan(input: PlannedSessionInput, members: ClubMemberView
   const known = new Set(members.map((m) => m.id))
   if (new Set(input.memberIds).size !== input.memberIds.length) errors.members = 'Each member can be on the roster once.'
   else if (input.memberIds.some((id) => !known.has(id))) errors.members = "Some players aren't members of this club any more. Reload and pick again."
+  const cap = maxPlayersProblem(input.maxPlayers, input.memberIds.length)
+  if (cap && !errors.details) errors.details = cap
 
   return { ...validateSetup(planToSetup(input, members)), ...errors }
 }
@@ -120,6 +128,9 @@ export function cleanPlan(input: PlannedSessionInput, members: ClubMemberView[])
     title: input.title.trim(),
     scheduledFor: input.scheduledFor === null ? null : new Date(input.scheduledFor).toISOString(),
     courts: input.courts.map((c) => ({ id: c.id, label: c.label.trim() })),
+    fee: keptFee(input.fee),
+    signUp: input.signUp ?? 'approval',
+    maxPlayers: input.maxPlayers ?? null,
   }
 }
 

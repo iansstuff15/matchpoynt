@@ -54,7 +54,12 @@ describe('manual placement', () => {
     const ctx = testContext()
     let s = readySession(setupInput({ rules: manual }), ctx)
     expect(startBlockedReason(s, court(s))).toBe('Drag 4 more players onto Court 1. Automatic queueing is off.')
-    for (const [name, side] of [['Ana', 0], ['Ben', 0], ['Cy', 1]] as const) s = assignPlayer(s, court(s).id, id(s, name), side)
+    for (const [name, side] of [
+      ['Ana', 0],
+      ['Ben', 0],
+      ['Cy', 1],
+    ] as const)
+      s = assignPlayer(s, court(s).id, id(s, name), side)
     expect(() => startMatch(s, court(s).id, ctx)).toThrow('Drag 1 more player onto Court 1')
     s = assignPlayer(s, court(s).id, id(s, 'Dee'), 1)
     s = startMatch(s, court(s).id, ctx)
@@ -93,11 +98,7 @@ describe('manual placement', () => {
     s = assignPlayer(s, court(s).id, id(s, 'Ana'), 0)
     s = assignPlayer(s, court(s).id, id(s, 'Ben'), 0)
     const view = toSessionView(s)
-    s = applySetup(
-      s,
-      setupInput({ scoring: { formatId: 'bwf-21', matchFormat: 'singles' }, courts: view.courts.map(({ id: cid, label }) => ({ id: cid, label })), members: view.players }),
-      ctx,
-    )
+    s = applySetup(s, setupInput({ scoring: { formatId: 'bwf-21', matchFormat: 'singles' }, courts: view.courts.map(({ id: cid, label }) => ({ id: cid, label })), members: view.players }), ctx)
     expect(names(s, court(s).lineup[0])).toEqual(['Ana'])
     const after = toSessionView(s).courts[0]!
     expect(after.lineup[0].map((p) => p.name)).toEqual(['Ana'])

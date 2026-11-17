@@ -16,12 +16,11 @@
     "server": {
       "root": "server",
       "runtime": "node",
-      "entrypoint": "dist/vercel.js",
+      "framework": "hono",
+      "entrypoint": "src/vercel.ts",
       "installCommand": "pnpm install --frozen-lockfile",
       "buildCommand": "pnpm build",
-      "functions": {
-        "dist/vercel.js": { "includeFiles": "dist/wasm/**" }
-      }
+      "outputDirectory": "dist/vercel"
     }
   },
   "rewrites": [

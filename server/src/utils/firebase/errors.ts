@@ -48,6 +48,14 @@ export function authFailure(error: unknown, fallback: string): ApiError {
         unavailable('This sign-in method is turned off in Firebase (Authentication > Sign-in method). Turn it on, or use another method.'),
         cause,
       )
+    case 'UNAUTHORIZED_DOMAIN':
+    case 'INVALID_CONTINUE_URI':
+      return Object.assign(
+        unavailable(
+          "Firebase won't send email links to this site's address yet. Add the site's domain (the one in APP_URL) to Firebase's Authorized domains (Authentication > Settings > Authorized domains).",
+        ),
+        cause,
+      )
     case 'API_KEY_INVALID':
     case 'API_KEY_SERVICE_BLOCKED':
     case 'CONFIGURATION_NOT_FOUND':

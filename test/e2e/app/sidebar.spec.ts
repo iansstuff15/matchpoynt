@@ -1,4 +1,5 @@
-import { appNav, closeSetup, openApp, sidebar } from '../support/appShell'
+import { appNav, expectEmptyBoard, openApp, sidebar } from '../support/appShell'
+import { closeClubSetup } from '../support/club'
 import { club, expect, test } from '../support/mockApi'
 import { gotoReady, pageReady, reloadReady } from '../support/pageReady'
 
@@ -11,16 +12,32 @@ test.describe('app sidebar', () => {
   })
 
   test('links only to app pages: no home or public rankings', async ({ page, api }) => {
-    // /app with no session opens setup once it has loaded; it hides the page behind it until closed.
+    // /app with no session shows the empty board; setup waits to be asked for.
     await gotoReady(page, '/app')
-    await closeSetup(page)
+    await expectEmptyBoard(page)
 
     const nav = appNav(page)
     await expect(nav.getByRole('link', { name: 'Session board' })).toHaveAttribute('aria-current', 'page')
     await expect(nav.getByRole('link', { name: 'All clubs' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Home' })).toHaveCount(0)
     await expect(nav.getByRole('link', { name: 'Rankings' })).toHaveCount(0)
+    // The tab bar along the bottom is for phones only.
+    await expect(page.getByRole('navigation', { name: 'Tabs' })).toBeHidden()
     expect(api.unhandled).toEqual([])
+  })
+
+  test('groups your links under the session switcher and the club pages under the club switcher', async ({ page }) => {
+    await openApp(page, `/clubs/${riverside.id}/members`)
+    const you = appNav(page).getByRole('group', { name: 'You' })
+    await expect(you.getByRole('button', { name: /Switch session|New session/ }).first()).toBeVisible()
+    await expect(you.getByRole('link', { name: 'Session board' })).toBeVisible()
+    await expect(you.getByRole('link', { name: 'Past sessions' })).toHaveCount(0)
+    await expect(you.getByRole('link', { name: 'Members' })).toHaveCount(0)
+
+    const clubGroup = appNav(page).getByRole('group', { name: 'Riverside Smashers' })
+    await expect(clubGroup.getByRole('button', { name: 'Switch club' })).toBeVisible()
+    await expect(clubGroup.getByRole('link', { name: 'Members' })).toHaveAttribute('aria-current', 'page')
+    await expect(clubGroup.getByRole('link', { name: 'Session board' })).toHaveCount(0)
   })
 
   test('collapses to an icon rail and remembers it after a reload', async ({ page }) => {
@@ -59,39 +76,39 @@ test.describe('app sidebar', () => {
     await expect(page.getByRole('button', { name: 'Switch club' })).toContainText('Choose a club')
   })
 
-  test("club links open the club picked in the switcher, on that tab", async ({ page }) => {
+  test('club links open the picked club\'s dashboard and pages', async ({ page }) => {
     await openApp(page, '/clubs')
 
-    // Pick a club from the sidebar's switcher.
+    // Pick a club from the sidebar's switcher: it opens on its dashboard.
     await page.getByRole('button', { name: 'Switch club' }).click()
     await page.getByRole('menuitem', { name: northside.name }).click()
     await expect(page).toHaveURL(`/clubs/${northside.id}`)
     await pageReady(page)
+    await closeClubSetup(page)
     await expect(page.getByRole('heading', { level: 1, name: northside.name })).toBeVisible()
 
     const nav = appNav(page)
-    await expect(nav.getByText(northside.name)).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Sessions', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(nav.getByText(northside.name).first()).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
 
+    // Each of the club's pages has its own address.
     await nav.getByRole('link', { name: 'Members' }).click()
-    await expect(page).toHaveURL(`/clubs/${northside.id}?tab=members`)
+    await expect(page).toHaveURL(`/clubs/${northside.id}/members`)
     await pageReady(page)
-    await expect(page.getByRole('tab', { name: 'Members' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'Members', level: 2 })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Members' })).toHaveAttribute('aria-current', 'page')
-    await expect(nav.getByRole('link', { name: 'Sessions', exact: true })).not.toHaveAttribute('aria-current', 'page')
+    await expect(nav.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current', 'page')
 
-    // Switching tabs on the page moves the sidebar's selection with it.
-    await page.getByRole('tab', { name: 'Club info' }).click()
-    await expect(page).toHaveURL(`/clubs/${northside.id}?tab=info`)
-    await pageReady(page)
-    await expect(nav.getByRole('link', { name: 'Club info' })).toHaveAttribute('aria-current', 'page')
+    // Links from before the pages existed still land on the page.
+    await gotoReady(page, `/clubs/${northside.id}?tab=members`)
+    await expect(page).toHaveURL(`/clubs/${northside.id}/members`)
 
     // Elsewhere in the app, the club links still open the club picked last.
     await nav.getByRole('link', { name: 'Session board' }).click()
     await pageReady(page)
-    await closeSetup(page)
-    await expect(nav.getByRole('link', { name: 'Members' })).toHaveAttribute('href', `/clubs/${northside.id}?tab=members`)
-    await expect(nav.getByRole('link', { name: 'Sessions', exact: true })).toHaveAttribute('href', `/clubs/${northside.id}`)
+    await expectEmptyBoard(page)
+    await expect(nav.getByRole('link', { name: 'Members' })).toHaveAttribute('href', `/clubs/${northside.id}/members`)
+    await expect(nav.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', `/clubs/${northside.id}`)
     await expect(nav.getByRole('link', { name: 'Sessions', exact: true })).not.toHaveAttribute('href', new RegExp(riverside.id))
   })
 

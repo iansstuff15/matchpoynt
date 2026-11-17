@@ -1,4 +1,5 @@
-import type { ClubBadgeView } from '@matchpoynt/shared'
+import type { ClubBadgeView, LeaderboardClub } from '@matchpoynt/shared'
+import type { ShareBackground } from '@/types/leaderboard'
 /** A generated image for sharing a player's leaderboard achievements. */
 export interface ShareCard {
   /** e.g. "Most wins", or "Summary" for the player card. */
@@ -17,4 +18,8 @@ export interface ShareCardContext {
   footer: string
   /** The club badges this player earned, each drawn on its own card. */
   clubBadges: ClubBadgeView[]
+  /** What the images are drawn on. */
+  background: ShareBackground
+  /** The club that runs the session, shown with its photo at the top; `null` without one. */
+  club: LeaderboardClub | null
 }

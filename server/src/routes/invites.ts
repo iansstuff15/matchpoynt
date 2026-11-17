@@ -1,13 +1,14 @@
 import type { AcceptInviteResponse, InviteView } from '@matchpoynt/shared'
 import { Hono, type Context } from 'hono'
 import { acceptInvite, loadInvite } from '@/queries/clubs'
-import { saveProfile } from '@/queries/profiles'
+import { saveProfile, usernameTaken } from '@/queries/profiles'
 import { mediaUrl } from '@/utils/club/media'
 import { ApiError, invalid, notFound } from '@/utils/http/errors'
 import { requireFeature } from '@/utils/http/feature'
 import { body, currentUser, requireUser, resolveUser } from '@/utils/http/middleware'
 import type { AppEnv } from '@/utils/http/types'
-import { assertValidProfile, passwordProblem } from '@/utils/profile/rules'
+import { assertValidProfile, passwordProblem, usernameTakenError } from '@/utils/profile/rules'
+import { normalizeHandle } from '@/utils/social/handles'
 import { profileStatus } from '@/utils/profile/status'
 import { saveSession } from '@/utils/auth/session'
 import { authFailure } from '@/utils/firebase/errors'
@@ -67,6 +68,7 @@ export const inviteRoutes = new Hono<AppEnv>()
       if (!input.profile) throw invalid('Fill in your profile to join.', { profile: 'Missing' })
       const weak = input.password === null ? 'Choose a password.' : passwordProblem(input.password)
       assertValidProfile(input.profile, weak ? { account: weak } : {})
+      if (await usernameTaken(db, normalizeHandle(input.profile.username), user.id)) throw usernameTakenError(input.profile.username)
       const tokens = c.get('tokens')
       if (!tokens) throw new ApiError('unauthorized', 'Open the invite link from your email to sign in first.')
       try {

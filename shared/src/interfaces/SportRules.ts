@@ -9,8 +9,17 @@ export interface ScoringFormat {
   pointsToWin: number
   /** Required lead at the end (2 for deuce rules, 1 for sudden death). */
   winBy: number
-  /** Score at which the next point wins regardless of lead. */
+  /** Score at which the next point wins regardless of lead. Equal to `pointsToWin` for a race to it. */
   cap?: number
+  /**
+   * Formats that differ only in a detail (e.g. the ceiling of a race) share a group,
+   * named here: setup lists them together under it, labelled by `variant`.
+   */
+  group?: string
+  /** How the group plays, shown under its name in setup. */
+  groupDescription?: string
+  /** What sets this format apart within its group, e.g. "Race to 31". */
+  variant?: string
   /** Games or sets in the match (1, 3, 5). */
   bestOf: number
   formats: MatchFormat[]

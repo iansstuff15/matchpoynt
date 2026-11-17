@@ -1,7 +1,7 @@
 {
   "name": "matchpoynt",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "pnpm run \"/^dev:(web|api)$/\"",
@@ -13,9 +13,11 @@
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
     "ui:add": "node scripts/shadcn-add.mjs",
+    "deploy:vercel": "node scripts/deploy-vercel.mjs",
     "desktop:icons": "tauri icon public/favicon.svg",
     "dev:api": "pnpm --filter @matchpoynt/server dev",
     "test": "node scripts/test-all.mjs",
+    "email:templates": "node scripts/email-templates.mjs",
     "db:generate": "pnpm --filter @matchpoynt/server db:generate",
     "db:migrate": "pnpm --filter @matchpoynt/server db:migrate",
     "dev:web": "vite",
@@ -26,9 +28,11 @@
     "@dnd-kit/core": "^6.3.1",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
-    "@matchpoynt/shared": "workspace:*",
     "@gsap/react": "^2.1.2",
-    "@tanstack/react-query": "^5.104.5",
+    "@matchpoynt/shared": "workspace:*",
+    "@tanstack/query-sync-storage-persister": "^5.107.1",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-query-persist-client": "^5.107.1",
     "@tauri-apps/api": "^2.12.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -41,9 +45,11 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^8.5.0",
+    "simple-icons": "^16.37.0",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

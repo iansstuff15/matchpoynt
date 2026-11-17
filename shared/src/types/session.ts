@@ -15,7 +15,7 @@ export type CourtSide = 0 | 1
 export type LateJoinerPlacement = 'fair' | 'priority'
 
 /** Steps of the session setup dialog, in order. Server validation errors are keyed by these. */
-export type SetupStepId = 'courts' | 'members' | 'scoring' | 'rules' | 'matchmaking'
+export type SetupStepId = 'courts' | 'members' | 'scoring' | 'rules' | 'matchmaking' | 'fees'
 
 export type CourtStatus = 'open' | 'playing'
 

@@ -1,13 +1,24 @@
+import type { MatchFormat, ScoringFormat, SessionSetupInput } from '@matchpoynt/shared'
 import RadioCard from '@/components/common/RadioCard'
 import { Label } from '@/components/ui/label'
 import { RadioGroup } from '@/components/ui/radio-group'
 import { sports } from '@/config/sports'
-import type { MatchFormat, SessionSetupInput } from '@matchpoynt/shared'
 import { describeMatchFormat, describeScoring } from '@/utils/scoring/describe'
 
 interface ScoringStepProps {
   setup: SessionSetupInput
   onChange: (setup: SessionSetupInput) => void
+}
+
+/** The sport's formats in order, with formats sharing a group (e.g. races to different ceilings) kept together. */
+function groupFormats(formats: ScoringFormat[]): { name: string | null; formats: ScoringFormat[] }[] {
+  const groups: { name: string | null; formats: ScoringFormat[] }[] = []
+  for (const format of formats) {
+    const last = groups.at(-1)
+    if (format.group && last?.name === format.group) last.formats.push(format)
+    else groups.push({ name: format.group ?? null, formats: [format] })
+  }
+  return groups
 }
 
 export default function ScoringStep({ setup, onChange }: ScoringStepProps) {
@@ -31,9 +42,22 @@ export default function ScoringStep({ setup, onChange }: ScoringStepProps) {
           <legend>{sport.name} scoring format</legend>
         </Label>
         <RadioGroup value={setup.scoring.formatId} onValueChange={selectFormat}>
-          {sport.scoring.map((f) => (
-            <RadioCard key={f.id} value={f.id} title={f.label} description={describeScoring(f, sport)} />
-          ))}
+          {groupFormats(sport.scoring).map((group) =>
+            group.name ? (
+              // A group of formats (e.g. a race with a choice of ceilings): its variants side by side under its name.
+              <div key={group.name} role="group" aria-label={group.name} className="grid gap-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">{group.name}</p>
+                {group.formats[0]!.groupDescription && <p className="text-sm text-muted-foreground">{group.formats[0]!.groupDescription}</p>}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {group.formats.map((f) => (
+                    <RadioCard key={f.id} value={f.id} title={f.variant ?? f.label} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <RadioCard key={group.formats[0]!.id} value={group.formats[0]!.id} title={group.formats[0]!.label} description={describeScoring(group.formats[0]!, sport)} />
+            ),
+          )}
         </RadioGroup>
       </fieldset>
 

@@ -1,28 +1,42 @@
 import type { ClubImageKind, ClubSummary } from '@matchpoynt/shared'
-import { CalendarDays, ImagePlus, Users } from 'lucide-react'
+import { CalendarDays, ImagePlus, ListChecks, Settings, Users } from 'lucide-react'
 import { useState } from 'react'
 import ClubAvatar from '@/components/club/ClubAvatar'
 import PhotoEditDialog from '@/components/club/PhotoEditDialog'
 import PhotoViewerDialog from '@/components/club/PhotoViewerDialog'
 import PositionedPhoto from '@/components/club/PositionedPhoto'
+import { Button } from '@/components/ui/button'
 import { clubPhotos } from '@/config/club'
+import ClubQrButton from '@/components/club/ClubQrButton'
+import { useFeatures } from '@/utils/hooks/useFeatures'
 import type { useClubActions } from '@/utils/hooks/useClubs'
 
 interface ClubHeroProps {
   club: ClubSummary
   actions: ReturnType<typeof useClubActions>
+  /** Opens the club settings. */
+  onSettings: () => void
+  /** Setup items still to do; with any left, a button opens "Finish setting up". */
+  setupLeft?: number
+  onSetup?: () => void
+  /** The photo being changed, when the page controls it (the setup checklist opens it too). */
+  editing?: ClubImageKind | null
+  onEditingChange?: (kind: ClubImageKind | null) => void
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /**
- * The club manager's banner: cover photo, profile photo overlapping it, name,
- * description and counts. Clicking a photo opens it with zoom and Edit; with
- * no photo yet, it opens the upload dialog.
+ * The club dashboard's banner: cover photo, profile photo overlapping it, name,
+ * counts and the settings button. Clicking a photo opens it with zoom and
+ * Edit; with no photo yet, it opens the upload dialog.
  */
-export default function ClubHero({ club, actions }: ClubHeroProps) {
+export default function ClubHero({ club, actions, onSettings, setupLeft = 0, onSetup, editing: controlled, onEditingChange }: ClubHeroProps) {
+  const { web } = useFeatures()
   const [viewing, setViewing] = useState<ClubImageKind | null>(null)
-  const [editing, setEditing] = useState<ClubImageKind | null>(null)
+  const [own, setOwn] = useState<ClubImageKind | null>(null)
+  const editing = controlled === undefined ? own : controlled
+  const setEditing = onEditingChange ?? setOwn
   const { uploadImage, removeImage, alignImage } = actions
   const urlOf = (kind: ClubImageKind) => (kind === 'avatar' ? club.avatarUrl : club.coverUrl)
   const positionOf = (kind: ClubImageKind) => (kind === 'avatar' ? club.avatarPosition : club.coverPosition)
@@ -60,6 +74,7 @@ export default function ClubHero({ club, actions }: ClubHeroProps) {
           <h1 id="club-title" className="truncate font-display text-2xl font-bold sm:text-3xl" title={club.name}>
             {club.name}
           </h1>
+          {club.handle && <p className="text-sm font-medium text-muted-foreground">@{club.handle}</p>}
           <p className="flex flex-wrap gap-x-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Users className="size-4" aria-hidden />
@@ -71,8 +86,20 @@ export default function ClubHero({ club, actions }: ClubHeroProps) {
             </span>
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          {setupLeft > 0 && onSetup && (
+            <Button variant="secondary" onClick={onSetup}>
+              <ListChecks />
+              Finish setting up · {setupLeft} left
+            </Button>
+          )}
+          {web.clubDirectory && web.signIn && club.handle && <ClubQrButton name={club.name} handle={club.handle} />}
+          <Button variant="outline" onClick={onSettings} aria-label={`${club.name} settings`}>
+            <Settings />
+            Settings
+          </Button>
+        </div>
       </div>
-      {club.description && <p className="max-w-3xl px-2 text-sm whitespace-pre-line text-muted-foreground sm:px-4">{club.description}</p>}
 
       {viewing && urlOf(viewing) && (
         <PhotoViewerDialog
@@ -97,7 +124,7 @@ export default function ClubHero({ club, actions }: ClubHeroProps) {
           shape={editing}
           aligning={alignImage.isPending}
           alignError={alignImage.error}
-          onAlign={(position) => alignImage.mutate({ kind: editing, position })}
+          onAlign={(position) => alignImage.mutate({ kind: editing, position }, { onSuccess: () => setEditing(null) })}
           uploading={uploadImage.isPending && uploadImage.variables?.kind === editing}
           removing={removeImage.isPending && removeImage.variables === editing}
           onOpenChange={(next) => !next && setEditing(null)}

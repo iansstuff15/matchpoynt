@@ -23,6 +23,10 @@ const checkMessages: Record<string, string> = {
   clubs_description_check: 'Club descriptions can be up to 1000 characters.',
   club_members_name_check: 'Member names must be 1 to 60 characters.',
   club_members_contact_check: 'Contact details can be up to 120 characters.',
+  club_members_role_check: 'That club role does not exist.',
+  club_feedback_forms_title_check: 'Feedback form titles must be 1 to 80 characters.',
+  club_feedback_forms_intro_check: 'The introduction can be up to 500 characters.',
+  friendships_self_check: "You can't add yourself as a friend.",
   planned_sessions_title_check: 'Session titles must be 1 to 80 characters.',
   planned_sessions_matchmaking_check: 'That matchmaking option does not exist.',
   sessions_title_check: 'Session titles must be 1 to 80 characters.',
@@ -50,6 +54,33 @@ export function dbFail(error: DbError | null): void {
   }
   if (error.code === '42501' || /row-level security/i.test(text)) {
     raise(new ApiError('forbidden', "You don't have access to this. It belongs to another account."))
+  }
+  // Refusals raised by the joining functions (0032), in the user's words.
+  const refusals: Record<string, string> = {
+    profile_incomplete: 'Finish your profile (pick a username) before joining a club.',
+    club_not_found: "That club doesn't exist any more.",
+    not_a_member: 'Join the club before asking to join its sessions.',
+    feedback_not_member: 'Only members of the club can answer its feedback form.',
+    feedback_closed: 'The club has turned its feedback form off, so it isn\'t taking answers now.',
+    feedback_not_played: `That session isn't one you played in, or it ended too long ago to answer for.`,
+    feedback_answered: 'You have already answered for this session. Thanks!',
+    friend_request_gone: 'That friend request is no longer open. It may have been cancelled or answered on another device.',
+    session_not_open: "That session can't be joined: it may have started, ended or been removed.",
+    invite_not_found: 'That invite is no longer open. The club may have cancelled it.',
+  }
+  const refusal = Object.keys(refusals).find((code) => text.includes(code))
+  if (refusal) raise(new ApiError(['club_not_found', 'invite_not_found', 'friend_request_gone'].includes(refusal) ? 'not_found' : 'conflict', refusals[refusal]!))
+  if (error.code === '23505' && text.includes('friendships_pair_idx')) {
+    raise(conflict("You're already friends with them, or a friend request between you is already open."))
+  }
+  if (error.code === '23505' && text.includes('club_feedback_responses_once_idx')) {
+    raise(conflict('You have already answered for this session. Thanks!'))
+  }
+  if (error.code === '23505' && text.includes('clubs_handle_idx')) {
+    raise(new ApiError('conflict', 'Another club has just taken that handle. Pick another.', { handle: 'Taken' }))
+  }
+  if (error.code === '23505' && text.includes('profiles_username_idx')) {
+    raise(new ApiError('conflict', 'Someone has just taken that username. Pick another.', { username: 'Taken', profile: 'Username taken' }))
   }
   if (error.code === '23505') {
     raise(

@@ -52,3 +52,9 @@ src-tauri/gen/schemas/
 .DS_Store
 *.suo
 *.sw?
+
+# Script runs (scripts/deploy-vercel.mjs)
+.output/
+
+# Email template previews (pnpm email:templates)
+server/email-templates/.preview/

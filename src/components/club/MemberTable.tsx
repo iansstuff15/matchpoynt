@@ -1,6 +1,7 @@
-import type { ClubBadgeView, ClubMemberView } from '@matchpoynt/shared'
+import { clubMemberRoles, type ClubBadgeView, type ClubMemberView } from '@matchpoynt/shared'
 import { Mail, MailCheck, MailX, Pencil, UserCheck, UserMinus } from 'lucide-react'
 import ClubBadgeIcon from '@/components/club/badges/ClubBadgeIcon'
+import ClubAvatar from '@/components/club/ClubAvatar'
 import ConfirmButton from '@/components/common/ConfirmButton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,7 +25,7 @@ interface MemberTableProps {
 
 const sentOn = (iso: string) => new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' })
 
-/** The club roster, by name, with each member's tier per sport. */
+/** The club roster, by name, with each member's role (other than member) and tier per sport. */
 export default function MemberTable({ members, badges, removingId, invitesOn, onEdit, onRemove, onInvite, onCancelInvite }: MemberTableProps) {
   return (
     <div className="rounded-2xl border bg-card p-2 sm:p-4">
@@ -42,8 +43,21 @@ export default function MemberTable({ members, badges, removingId, invitesOn, on
           {members.map((m) => (
             <TableRow key={m.id}>
               <TableCell>
-                <span className="block truncate font-medium" title={m.name}>
-                  {m.name}
+                <span className="flex min-w-0 items-center gap-2">
+                  {m.linked && <ClubAvatar name={m.name} url={m.avatarUrl} className="size-7 text-xs" />}
+                  <span className="grid min-w-0">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-medium" title={m.name}>
+                        {m.name}
+                      </span>
+                      {m.role !== 'member' && (
+                        <Badge variant="secondary" className="shrink-0" title={clubMemberRoles[m.role].description}>
+                          {clubMemberRoles[m.role].label}
+                        </Badge>
+                      )}
+                    </span>
+                    {m.username && <span className="truncate text-xs text-muted-foreground">@{m.username}</span>}
+                  </span>
                 </span>
                 {m.badges.length > 0 && (
                   <span className="mt-1 flex flex-wrap gap-1" aria-label={`${m.name}'s club badges`}>
@@ -86,9 +100,9 @@ export default function MemberTable({ members, badges, removingId, invitesOn, on
                     Joined
                   </Badge>
                 ) : m.invite?.status === 'pending' ? (
-                  <Badge variant="outline" className="gap-1" title={`Sent to ${m.email ?? ''}`}>
+                  <Badge variant="outline" className="gap-1" title={m.invite.via === 'app' ? 'Invited in the app' : `Sent to ${m.email ?? ''}`}>
                     <MailCheck aria-hidden />
-                    Invited {sentOn(m.invite.sentAt)}
+                    {m.invite.via === 'app' ? 'Invited in app' : 'Invited'} {sentOn(m.invite.sentAt)}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground">—</span>

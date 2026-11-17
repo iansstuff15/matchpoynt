@@ -5,6 +5,10 @@
   --animate-fade-up: fade-up var(--gp-duration-slow) var(--gp-ease-out) both;
   --animate-fade-in: fade-in var(--gp-duration-base) var(--gp-ease-out) both;
   --animate-court-pulse: court-pulse 2s var(--gp-ease-in-out) infinite;
+  --animate-arch-bob: arch-bob var(--gp-loop-arch-bob) var(--gp-ease-in-out) infinite alternate;
+  --animate-arch-hop: arch-hop var(--gp-loop-arch-bob) var(--gp-ease-in-out) infinite alternate;
+  --animate-cta-pulse: cta-pulse var(--gp-loop-cta-pulse) var(--gp-ease-out) infinite;
+  --animate-loading-bar: loading-bar var(--gp-loop-loading-bar) var(--gp-ease-in-out) infinite;
   --animate-flame: flame var(--gp-loop-flicker) ease-in-out infinite;
   --animate-ember: ember var(--gp-loop-ember) ease-out infinite;
 
@@ -57,6 +61,49 @@
     100% {
       opacity: 0;
       transform: translate(var(--ember-drift, 3px), -1.1rem) scale(0.3);
+    }
+  }
+
+  /* Playing now while you're on court: a soft ring of the accent swelling out from the button and fading. */
+  @keyframes cta-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--sidebar-primary) 65%, transparent);
+    }
+    70% {
+      box-shadow: 0 0 0 12px color-mix(in oklab, var(--sidebar-primary) 0%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--sidebar-primary) 0%, transparent);
+    }
+  }
+
+  /* The splash's loading bar: a stripe sweeping across its track. */
+  @keyframes loading-bar {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+
+  /* arch-bob in the logo's own units (px are SVG user units with transform-box: view-box), so an arch and
+     the cut-out that lets it pass over the other move by exactly the same amount. */
+  @keyframes arch-hop {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-26px);
+    }
+  }
+
+  @keyframes arch-bob {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-14%);
     }
   }
 

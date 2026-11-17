@@ -28,6 +28,8 @@ export type ColorToken =
   | 'warning-foreground'
   | 'info'
   | 'info-foreground'
+  | 'chart-collected'
+  | 'chart-spent'
   | 'deep'
   | 'deep-strong'
   | 'deep-foreground'
@@ -54,4 +56,6 @@ export type ColorToken =
   | 'sidebar-accent-foreground'
   | 'sidebar-border'
   | 'sidebar-ring'
+  | 'logo-ink'
+  | 'logo-accent'
 

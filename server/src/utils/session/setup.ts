@@ -1,5 +1,6 @@
 import { sessionDefaults, sportRules, type SessionSetupInput, type SetupStepId } from '@matchpoynt/shared'
 import type { CourtState, EngineContext, SessionState } from '@/interfaces/SessionState'
+import { keptFee, validateFee } from '@/utils/fees/rules'
 import { invalid } from '@/utils/http/errors'
 import { autoFill, insertPlayer, settleCheckIns, tidyLineups } from '@/utils/session/engine'
 import { playersPerSide } from '@/utils/session/rules'
@@ -28,10 +29,14 @@ export function validateSetup(input: SessionSetupInput): StepErrors {
   if (!format) errors.scoring = 'Choose a scoring format.'
   else if (!format.formats.includes(input.scoring.matchFormat)) errors.scoring = 'That format does not support this match type.'
 
+
   const limit = input.rules.timeLimitMinutes
   if (limit !== null && (!Number.isInteger(limit) || limit < 1 || limit > 240)) {
     errors.rules = 'Time limit must be a whole number of minutes, from 1 to 240.'
   }
+
+  const fee = validateFee(input.fee)
+  if (fee) errors.fees = fee
   return errors
 }
 
@@ -42,8 +47,8 @@ function assertValid(input: SessionSetupInput) {
 }
 
 function settingsOf(input: SessionSetupInput): SessionState['settings'] {
-  const { sportId, scoring, rules, matchmaking } = input
-  return { sportId, scoring, rules, matchmaking }
+  const { sportId, scoring, rules, matchmaking, fee } = input
+  return { sportId, scoring, rules, matchmaking, fee: keptFee(fee) }
 }
 
 /** A running tournament fixes the team size and keeps its players: settings can't pull them out from under it. */
